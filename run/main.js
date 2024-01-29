@@ -176,7 +176,10 @@ function executeTag(tag) {
             callStack.push({path: executionState.path, pointer: executionState.pointer});
         case "jump":
             // TODO: implement returning and make this better obey args
-            // cacheStatements(tag.args.storage);
+            console.log(tag.func, tag.args);
+            if (!("storage" in tag.args)) tag.args.storage = executionState.path;
+
+            cacheStatements(tag.args.storage);
 
             // console.warn(tag);
             // alert(`goto ${tag.func} ${tag.args.storage} from ${executionState.path}`);

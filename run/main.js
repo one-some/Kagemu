@@ -3,6 +3,9 @@ const executionState = Object.seal({pointer: 0, path: ""});
 const cachedStatements = {};
 const callStack = [];
 
+// FIXME: STUB
+BigPacked["achievements.ks"] = "[return]\n[return]";
+
 function fixme(...args) {
     console.warn("[fixme]", ...args);
 }
@@ -56,17 +59,20 @@ function parseScenario(src) {
     let textBuffer = "";
 
     function commitTag() {
+        if (tagBuffer === null) return;
         out.push({type: "tag", ...parseTag(tagBuffer)});
         tagBuffer = null;
         tagBufferOpener = null;
     }
 
     function commitLabel() {
+        if (labelBuffer === null) return;
         const bits = labelBuffer.split("|");
         if (bits.length > 2) throw "Why is too many bits!?!?!?!";
 
         const statement = {type: "label", name: bits[0]};
         if (bits.length === 2) statement["displayName"] = bits[1];
+        console.log("LABELLABEL", statement);
         out.push(statement);
         labelBuffer = null;
     }
@@ -132,6 +138,10 @@ function parseScenario(src) {
         textBuffer += c;
     }
 
+    commitTag();
+    commitLabel();
+    commitText();
+
     console.log(out);
     return out
 }
@@ -146,6 +156,7 @@ function jumpToLabel(label) {
             }
         }
     }
+    console.warn("Couldn't find label", label);
     return false;
 }
 
@@ -157,10 +168,6 @@ function executeTag(tag) {
         case "loadplugin":
             console.info("[note] loadplugin's a no-go. hope that's okay!");
             break;
-        case "image":
-            console.info(tag);
-            throw "IMG";
-            break
         case "return":
             let stackFrame = callStack.pop();
             jumpTo(stackFrame.path, stackFrame.pointer);
@@ -169,7 +176,11 @@ function executeTag(tag) {
             callStack.push({path: executionState.path, pointer: executionState.pointer});
         case "jump":
             // TODO: implement returning and make this better obey args
-            cacheStatements(tag.args.storage);
+            // cacheStatements(tag.args.storage);
+
+            // console.warn(tag);
+            // alert(`goto ${tag.func} ${tag.args.storage} from ${executionState.path}`);
+
             if (tag.args.target) {
                 const label = tag.args.target.slice(1);
                 if (!jumpToLabel(label)) throw "Bad ptr";
@@ -181,20 +192,21 @@ function executeTag(tag) {
             }
             break;
         default:
-            console.error(`Missing "${tag.func}"`);
+            console.error(`Missing "${tag.func}" with args`, tag.args);
     }
 }
 
 function cacheStatements(path) {
     if (path in cachedStatements) return;
     if (!path) throw "No path to cache dummy!";
-    if (!BigPacked[path]) throw `idk what '${path}' is...`;
+    if (BigPacked[path] === undefined) throw `idk what '${path}' is...`;
     cachedStatements[path] = parseScenario(BigPacked[path]);
 }
 
 function jumpTo(path, pointer) {
     executionState.path = path;
     executionState.pointer = pointer;
+    console.log("cache - jumpto PATH", path, "POINTER", pointer);
     cacheStatements(path);
 }
 

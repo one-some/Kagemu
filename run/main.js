@@ -1,7 +1,8 @@
 // https://kirikirikag.sourceforge.net/contents/index.html
-const executionState = Object.seal({pointer: 0, path: ""});
+const executionState = Object.seal({pointer: 0, path: "", ifState: null, stopped: false});
 const cachedStatements = {};
 const callStack = [];
+const labelCache = {};
 
 // FIXME: STUB
 BigPacked["achievements.ks"] = "[return]\n[return]";
@@ -48,7 +49,7 @@ function parseTag(str) {
     return out;
 }
 
-function parseScenario(src) {
+function parseScenario(src, path) {
     let out = [];
     let inComment = false;
 
@@ -57,6 +58,8 @@ function parseScenario(src) {
     let labelBuffer = null;
     // Text buffer is aways open, not null.
     let textBuffer = "";
+
+    labelCache[path] = {};
 
     function commitTag() {
         if (tagBuffer === null) return;
@@ -72,7 +75,8 @@ function parseScenario(src) {
 
         const statement = {type: "label", name: bits[0]};
         if (bits.length === 2) statement["displayName"] = bits[1];
-        console.log("LABELLABEL", statement);
+
+        labelCache[path][bits[0]] = {pointer: out.length};
         out.push(statement);
         labelBuffer = null;
     }
@@ -82,6 +86,12 @@ function parseScenario(src) {
         if (!textBuffer) return;
         out.push({type: "text", text: textBuffer});
         textBuffer = "";
+    }
+
+    function isNewline(i) {
+        if (!i) return true;
+        if (src[i - 1] === "\n") return true;
+        return false;
     }
 
     for (let i=0;i<src.length;i++) {
@@ -113,20 +123,20 @@ function parseScenario(src) {
             continue;
         }
 
-        if (c === ";" && src[i - 1] === "\n") {
+        if (c === ";" && isNewline(i)) {
             inComment = true;
             commitText();
             continue;
         }
 
-        if (c === "*" && src[i - 1] === "\n") {
+        if (c === "*" && isNewline(i)) {
             labelBuffer = "";
             commitText();
             continue;
         }
 
         if (
-            (c === "@" && src[i - 1] === "\n")
+            (c === "@" && isNewline(i))
             || c === "["
         ) {
             tagBuffer = "";
@@ -146,27 +156,57 @@ function parseScenario(src) {
     return out
 }
 
-function jumpToLabel(label) {
-    // TODO: OPTIMIZATION: JUMP TABLE
-    for (const [path, statements] of Object.entries(cachedStatements)) {
-        for (let i=0;i<statements.length;i++) {
-            if (statements[i].type === "label" && statements[i].name === label) {
-                jumpTo(path, i);
-                return true;
-            }
-        }
+function jumpToLabel(label, storage, kickstart=false) {
+    if (!storage) throw "NO STORAGE";
+    cacheStatements(storage);
+
+    if (!labelCache[storage][label]) {
+        console.warn("[jumptolabel] FAIL!!", label, storage);
+        throw "MISSING "+label;
     }
-    console.warn("Couldn't find label", label);
-    return false;
+
+    jumpTo(storage, labelCache[storage][label].pointer);
+    if (kickstart) runUntilStopped();
 }
 
 function executeTag(tag) {
+    // if hax, yucky and bad
+    if (tag.func === "endif") {
+        executionState.ifState = null;
+        return;
+    }
+
+    if (executionState.ifState === false) {
+        return;
+    }
+
     switch (tag.func) {
-        case "wait":
-            fixme("Add 'wait'");
+        case "if":
+            const expression = tag.exp;
+            executionState.ifState = false;
+            console.log(tag);
+            //throw "iffff";
+            break;
+        case "s":
+            console.info("Stopped");
+            executionState.stopped = true;
+            break;
+        case "close":
+            alert("GOODBYE");
+            executionState.stopped = true;
+            throw "BYE BYE";
+            break;
+        case "button":
+            uiMakeButton(tag.args);
+            break;
+        case "locate":
+            uiLocate(tag.args);
+            break;
+        case "title":
+            uiSetTitle(tag.args.name);
             break;
         case "loadplugin":
-            console.info("[note] loadplugin's a no-go. hope that's okay!");
+            console.warn("[note] loadplugin's a no-go. hope that's okay!");
             break;
         case "return":
             let stackFrame = callStack.pop();
@@ -186,7 +226,7 @@ function executeTag(tag) {
 
             if (tag.args.target) {
                 const label = tag.args.target.slice(1);
-                if (!jumpToLabel(label)) throw "Bad ptr";
+                jumpToLabel(label, tag.args.storage);
             } else if (tag.args.storage) {
                 jumpTo(tag.args.storage, 0);
             } else {
@@ -203,7 +243,7 @@ function cacheStatements(path) {
     if (path in cachedStatements) return;
     if (!path) throw "No path to cache dummy!";
     if (BigPacked[path] === undefined) throw `idk what '${path}' is...`;
-    cachedStatements[path] = parseScenario(BigPacked[path]);
+    cachedStatements[path] = parseScenario(BigPacked[path], path);
 }
 
 function jumpTo(path, pointer) {
@@ -213,11 +253,11 @@ function jumpTo(path, pointer) {
     cacheStatements(path);
 }
 
+function runUntilStopped() {
+    console.info("I'm on the run! Unstopping...");
+    executionState.stopped = false;
 
-function runScenario(path) {
-    jumpTo(path, -1);
-
-    while (true) {
+    while (!executionState.stopped) {
         executionState.pointer++;
         if (executionState.pointer >= cachedStatements[executionState.path].length) break;
 
@@ -228,4 +268,15 @@ function runScenario(path) {
     }
 }
 
+function runScenario(path) {
+    jumpTo(path, -1);
+    runUntilStopped();
+}
+
+// Init cache
+// for (const k in BigPacked) {
+//     cacheStatements(k);
+// }
+
+// Run! For your life!
 runScenario("first.ks");

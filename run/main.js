@@ -1,8 +1,14 @@
 // https://kirikirikag.sourceforge.net/contents/index.html
-const executionState = Object.seal({pointer: 0, path: "", ifState: null, stopped: false});
+const executionState = Object.seal({
+    pointer: 0,
+    path: "",
+    ifState: null,
+    stopped: false,
+});
 const cachedStatements = {};
 const callStack = [];
 const labelCache = {};
+const macroCache = {};
 
 // FIXME: STUB
 BigPacked["achievements.ks"] = "[return]\n[return]";
@@ -63,7 +69,9 @@ function parseScenario(src, path) {
 
     function commitTag() {
         if (tagBuffer === null) return;
-        out.push({type: "tag", ...parseTag(tagBuffer)});
+        const tag = {type: "tag", ...parseTag(tagBuffer)};
+        out.push(tag)
+
         tagBuffer = null;
         tagBufferOpener = null;
     }
@@ -152,8 +160,32 @@ function parseScenario(src, path) {
     commitLabel();
     commitText();
 
-    console.log(out);
-    return out
+    // console.log(out);
+
+    const processedOut = [];
+
+    // Process macros
+    for (const thing of out) {
+        const lastOut = processedOut[processedOut.length - 1] || {};
+        // console.log(thing, lastOut);
+        if (
+            (lastOut.func === "macro" && thing.func !== "endmacro")
+            || (lastOut.func === "iscript" && thing.func !== "endscript")
+        ) {
+            lastOut.code.push(thing);
+            continue;
+        }
+
+        switch (thing.func) {
+            case "macro":
+            case "iscript":
+                thing.code = [];
+                break
+        }
+        processedOut.push(thing);
+    }
+    console.warn("OUT");
+    return processedOut;
 }
 
 function jumpToLabel(label, storage, kickstart=false) {
@@ -170,6 +202,7 @@ function jumpToLabel(label, storage, kickstart=false) {
 }
 
 function executeTag(tag) {
+    console.warn("EXECUTING", tag);
     // if hax, yucky and bad
     if (tag.func === "endif") {
         executionState.ifState = null;
@@ -177,10 +210,26 @@ function executeTag(tag) {
     }
 
     if (executionState.ifState === false) {
+        console.log("IGNORE--IF");
         return;
     }
 
+    // if (tag.func in macroCache) {
+    //     for (const t of macroCache[tag.func]) {
+    //         executeTag(t);
+    //     }
+    //     return;
+    // }
+
     switch (tag.func) {
+        case "macro":
+            if (!tag.args.name) throw "No name for macro :(";
+            macroCache[tag.args.name] = tag.code;
+            console.log(macroCache);
+            // throw "HEY";
+            break;
+        case "iscript":
+            break;
         case "if":
             const expression = tag.exp;
             executionState.ifState = false;
@@ -210,6 +259,7 @@ function executeTag(tag) {
             break;
         case "return":
             let stackFrame = callStack.pop();
+            console.warn("GOUP", stackFrame);
             jumpTo(stackFrame.path, stackFrame.pointer);
             break;
         case "call":

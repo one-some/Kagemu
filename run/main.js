@@ -156,6 +156,9 @@ function parseScenario(src, path) {
     function commitText() {
         // Call this when transitioning from normal operation (ie end of loop)
         if (!textBuffer) return;
+
+        // HACK
+        textBuffer = textBuffer.replaceAll("\n", "");
         currentNode.children.push({id: ++topNodeId, type: "text", text: textBuffer});
         textBuffer = "";
     }
@@ -317,16 +320,19 @@ function callMacro(name, depth) {
         throw "MACRO: IN 2 DEEP";
     }
 
-    console.info(`TODO: Call macro ${name}`, macroCache[name]);
+    // console.info(`Call macro ${name}`, macroCache[name]);
 
     //return;
     for (const t of macroCache[name].children) {
-        if (t.type !== "tag") continue;
-        if (t.func === "macro") {
-            console.warn(`IGNORING nested macro tag ${t.func}`);
-            continue;
+        if (t.type === "tag") {
+            if (t.func === "macro") {
+                console.warn(`IGNORING nested macro tag ${t.func}`);
+                continue;
+            }
+            executeTag(t, depth + 1);
+        } else if (t.type === "text") {
+            uiAddText(t.text);
         }
-        executeTag(t, depth + 1);
     }
 }
 
@@ -358,6 +364,15 @@ function executeTag(tag, macroDepth=0) {
             break;
         case "button":
             uiMakeButton(tag.args);
+            break;
+        case "cm":
+            // Clear message
+            uiClearText();
+            break;
+        case "l":
+            // Wait for click (at end of line)
+            stopExecution();
+            waitingForUIClick = true;
             break;
         case "locate":
             uiLocate(tag.args);
@@ -406,6 +421,11 @@ function cacheStatements(path) {
     cachedStatements[path] = parseScenario(BigPacked[path], path);
 }
 
+function stopExecution() {
+    executionState.stopped = true;
+    console.log("[stopexecution] Okay boss...");
+}
+
 function runUntilStopped() {
     console.info("I'm on the run! Unstopping...");
     executionState.stopped = false;
@@ -420,6 +440,8 @@ function runUntilStopped() {
         // cachedStatements[executionState.path][executionState.pointer];
         if (statement.type === "tag") {
             executeTag(statement);
+        } else {
+            uiAddText(statement.text);
         }
     }
 

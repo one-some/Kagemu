@@ -32,7 +32,9 @@ class Pointer {
         cacheStatements(path);
         this.path = path;
         this.jumpTo(cachedStatements[path]);
-        runUntilStopped();
+
+        // FIXME uhhhhh what!
+        if (executionState.stopped) runUntilStopped();
     }
 
     advance() {
@@ -45,7 +47,12 @@ class Pointer {
         while (this.index >= this.node.children.length) {
             // While we're past our index, go after where we were.
             const oldNode = this.node;
-            if (this.node.parent) this.node = this.node.parent;
+            if (!this.node.parent) {
+                executionState.stopped = true;
+                console.error("Trying to advance outta root");
+                break;
+            }
+            this.node = this.node.parent;
             for (let i=0;i<this.node.children.length;i++) {
                 if (this.node.children[i] !== oldNode) continue;
                 this.index = i + 1;
@@ -60,14 +67,13 @@ class Pointer {
 
 const executionState = Object.seal({
     pointer: new Pointer(null, 0),
-    stopped: false,
+    stopped: true,
 });
 
 function doReturn() {
     let stackPointer = callStack.pop();
     console.warn("GOUP", stackPointer);
     executionState.pointer = stackPointer;
-    // MAYBE??
     executionState.pointer.advance();
 }
 
@@ -121,6 +127,10 @@ function parseScenario(src, path) {
     let labelBuffer = null;
     // Text buffer is aways open, not null.
     let textBuffer = "";
+
+    // Ignore tabs
+    // ^ isn't working!?!?!?
+    src = src.replace(/\n\t+/g, "\n");
 
     labelCache[path] = {};
 
@@ -306,7 +316,9 @@ function callMacro(name, depth) {
         console.error(name);
         throw "MACRO: IN 2 DEEP";
     }
-    //console.info(`TODO: Call macro ${tag.func}`, macroCache[tag.func]);
+
+    console.info(`TODO: Call macro ${name}`, macroCache[name]);
+
     //return;
     for (const t of macroCache[name].children) {
         if (t.type !== "tag") continue;
@@ -319,7 +331,7 @@ function callMacro(name, depth) {
 }
 
 function executeTag(tag, macroDepth=0) {
-    // console.warn("EXECUTING", tag);
+    //console.warn("EXECUTING", tag);
     // if hax, yucky and bad
     if (!tag.func) throw "Bad tag func";
 
@@ -394,20 +406,11 @@ function cacheStatements(path) {
     cachedStatements[path] = parseScenario(BigPacked[path], path);
 }
 
-var iter =0;
 function runUntilStopped() {
     console.info("I'm on the run! Unstopping...");
     executionState.stopped = false;
 
     while (!executionState.stopped) {
-        iter++;
-        if (iter > 1000) {
-            console.warn("TOOMUCH");
-            alert(1);
-            executionState.stopped = false;
-            break;
-        }
-
         executionState.pointer.advance();
         // if (executionState.pointer >= cachedStatements[executionState.path].length) break;
 
@@ -420,8 +423,12 @@ function runUntilStopped() {
         }
     }
 
+    console.log("Ending! Callstack length:", callStack.length, "Pointer", executionState.pointer);
+
     if (callStack.length) {
+        console.log("Returning...");
         doReturn();
+        runUntilStopped();
     } else {
         console.info("End of RUS");
     }
@@ -433,6 +440,7 @@ function step() {
 
     if (!statement) {
         if (callStack.length) {
+            console.info("[loop] Reached end, returning");
             doReturn();
             return;
         }

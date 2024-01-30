@@ -60,7 +60,6 @@ class Pointer {
 
 const executionState = Object.seal({
     pointer: new Pointer(null, 0),
-    ifState: null,
     stopped: false,
 });
 
@@ -301,40 +300,40 @@ function jumpToLabel(label, storage=null, kickstart=false) {
     if (kickstart) runUntilStopped();
 }
 
-function executeTag(tag) {
+function callMacro(name, depth) {
+    if (!name) throw "MACRO: UNNAMED MACRO CALL";
+    if (depth > 100) {
+        console.error(name);
+        throw "MACRO: IN 2 DEEP";
+    }
+    //console.info(`TODO: Call macro ${tag.func}`, macroCache[tag.func]);
+    //return;
+    for (const t of macroCache[name].children) {
+        if (t.type !== "tag") continue;
+        if (t.func === "macro") {
+            console.warn(`IGNORING nested macro tag ${t.func}`);
+            continue;
+        }
+        executeTag(t, depth + 1);
+    }
+}
+
+function executeTag(tag, macroDepth=0) {
     // console.warn("EXECUTING", tag);
     // if hax, yucky and bad
-    if (tag.func === "endif") {
-        executionState.ifState = null;
+    if (!tag.func) throw "Bad tag func";
+
+    if (tag.func in macroCache) {
+        callMacro(tag.func, macroDepth);
         return;
     }
-
-    //if (executionState.ifState === false) {
-    //    console.log("IGNORE--IF");
-    //    return;
-    //}
-
-    // if (tag.func in macroCache) {
-    //     for (const t of macroCache[tag.func]) {
-    //         executeTag(t);
-    //     }
-    //     return;
-    // }
 
     switch (tag.func) {
         case "macro":
             if (!tag.args.name) throw "No name for macro :(";
-            macroCache[tag.args.name] = tag.code;
-            // console.log(macroCache);
-            // throw "HEY";
+            macroCache[tag.args.name] = tag;
             break;
         case "iscript":
-            break;
-        case "if":
-            const expression = tag.exp;
-            executionState.ifState = false;
-            console.log(tag);
-            //throw "iffff";
             break;
         case "s":
             console.info("Stopped");
@@ -383,7 +382,8 @@ function executeTag(tag) {
             }
             break;
         default:
-            console.error(`Missing "${tag.func}" with args`, tag.args);
+            //console.error(`Missing "${tag.func}" with args`, tag.args);
+            break;
     }
 }
 
@@ -394,11 +394,20 @@ function cacheStatements(path) {
     cachedStatements[path] = parseScenario(BigPacked[path], path);
 }
 
+var iter =0;
 function runUntilStopped() {
     console.info("I'm on the run! Unstopping...");
     executionState.stopped = false;
 
     while (!executionState.stopped) {
+        iter++;
+        if (iter > 1000) {
+            console.warn("TOOMUCH");
+            alert(1);
+            executionState.stopped = false;
+            break;
+        }
+
         executionState.pointer.advance();
         // if (executionState.pointer >= cachedStatements[executionState.path].length) break;
 
@@ -421,7 +430,14 @@ function runUntilStopped() {
 function step() {
     executionState.pointer.advance();
     const statement = executionState.pointer.statementAt();
-    if (!statement) throw "No statement.";
+
+    if (!statement) {
+        if (callStack.length) {
+            doReturn();
+            return;
+        }
+        throw "No statement.";
+    }
 
     // cachedStatements[executionState.path][executionState.pointer];
     if (statement.type === "tag") {

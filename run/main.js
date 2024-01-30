@@ -365,9 +365,17 @@ function executeTag(tag, macroDepth=0) {
         case "button":
             uiMakeButton(tag.args);
             break;
+        case "image":
+            uiImage(tag.args);
+            break;
         case "cm":
             // Clear message
             uiClearText();
+            break;
+        case "r":
+            // Newline
+            // TODO: "eol" argument
+            uiAddText("\n");
             break;
         case "l":
             // Wait for click (at end of line)
@@ -409,7 +417,7 @@ function executeTag(tag, macroDepth=0) {
             }
             break;
         default:
-            //console.error(`Missing "${tag.func}" with args`, tag.args);
+            console.error(`Missing "${tag.func}" with args`, tag.args);
             break;
     }
 }

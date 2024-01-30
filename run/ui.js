@@ -1,5 +1,6 @@
 const cursor = {x: 0, y: 0};
 const textEl = document.getElementById("main-text");
+const imageLayers = {}
 let waitingForUIClick = false;
 
 function uiSetTitle(title) {
@@ -32,8 +33,35 @@ function uiClearText() {
     textEl.innerText = "";
 }
 
+function uiImage(args) {
+    if (!args.storage) throw "No storage on img!";
+    if (!("layer" in args)) throw "No layer on img!";
+
+    if (imageLayers[args.layer]) {
+        imageLayers[args.layer].remove();
+    }
+
+    const image = new Image();
+    imageLayers[args.layer] = image;
+
+    // We are making a good few assumptions here and lotsa hax
+    image.onerror = function() {
+        image.src = `image/${args.storage}.jpg`;
+    }
+
+    image.src = `image/${args.storage}.png`;
+
+    image.style.position = "absolute";
+    image.style.left = `${cursor.x}px`;
+    image.style.top = `${cursor.y}px`;
+
+    document.body.appendChild(image);
+
+    console.log(args.storage);
+    console.warn(args);
+}
+
 document.body.addEventListener("click", function() {
-    console.log("CLICK");
     if (!waitingForUIClick) return;
     waitingForUIClick = false;
     runUntilStopped();

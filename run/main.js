@@ -155,10 +155,11 @@ function parseScenario(src, path) {
 
     function commitText() {
         // Call this when transitioning from normal operation (ie end of loop)
-        if (!textBuffer) return;
 
         // HACK
         textBuffer = textBuffer.replaceAll("\n", "");
+        if (!textBuffer) return;
+
         currentNode.children.push({id: ++topNodeId, type: "text", text: textBuffer});
         textBuffer = "";
     }

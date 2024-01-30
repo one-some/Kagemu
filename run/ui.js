@@ -55,6 +55,23 @@ function uiImage(args) {
     image.style.left = `${cursor.x}px`;
     image.style.top = `${cursor.y}px`;
 
+    // By default, foreground layer 0 is 1000, foreground layer 1 is 2000 (increased by 1000 thereafter), message layer 0 is 1000000, message layer 1 is 1001000 (increased by 1000 thereafter), and the layer for displaying message history is 2000000. It has become.
+// 　The stacking order of background layers cannot be changed. Please note that this stacking order may be returned to the standard state when the
+// 　laycount tag is executed.
+    // if (args.index !== undefined) alert(args.index);
+    // FIXME: I think this is busted!
+    switch (args.page) {
+        case "fore":
+            image.style.zIndex = 1;
+            break;
+        case "back":
+            image.style.zIndex = 2;
+            break;
+        default:
+            image.style.zIndex = 0;
+            break;
+    }
+
     document.body.appendChild(image);
 
     console.log(args.storage);

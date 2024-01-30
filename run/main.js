@@ -1,17 +1,76 @@
 // https://kirikirikag.sourceforge.net/contents/index.html
-const executionState = Object.seal({
-    pointer: 0,
-    path: "",
-    ifState: null,
-    stopped: false,
-});
 const cachedStatements = {};
 const callStack = [];
 const labelCache = {};
 const macroCache = {};
+const blockNodes = {
+    iscript: {open: "iscript", close: "endscript", textOnly: true},
+    macro: {open: "macro", close: "endmacro"},
+    "if": {open: "if", close: "endif"},
+};
 
 // FIXME: STUB
 BigPacked["achievements.ks"] = "[return]\n[return]";
+
+class Pointer {
+    constructor(node, index, path) {
+        this.node = node;
+        this.index = index;
+        this.path = path;
+    }
+
+    graft() {
+        return new Pointer(this.node, this.index, this.path);
+    }
+
+    jumpTo(node) {
+        this.node = node;
+        this.index = 0;
+    }
+
+    jumpToFile(path) {
+        cacheStatements(path);
+        this.path = path;
+        this.jumpTo(cachedStatements[path]);
+        runUntilStopped();
+    }
+
+    advance() {
+        //console.log("advancing", this.node);
+        if (this.index < this.node.children.length) {
+            this.index++;
+            return;
+        }
+
+        while (this.index >= this.node.children.length) {
+            // While we're past our index, go after where we were.
+            const oldNode = this.node;
+            if (this.node.parent) this.node = this.node.parent;
+            for (let i=0;i<this.node.children.length;i++) {
+                if (this.node.children[i] !== oldNode) continue;
+                this.index = i + 1;
+            }
+        }
+    }
+
+    statementAt() {
+        return this.node.children[this.index];
+    }
+}
+
+const executionState = Object.seal({
+    pointer: new Pointer(null, 0),
+    ifState: null,
+    stopped: false,
+});
+
+function doReturn() {
+    let stackPointer = callStack.pop();
+    console.warn("GOUP", stackPointer);
+    executionState.pointer = stackPointer;
+    // MAYBE??
+    executionState.pointer.advance();
+}
 
 function fixme(...args) {
     console.warn("[fixme]", ...args);
@@ -56,7 +115,6 @@ function parseTag(str) {
 }
 
 function parseScenario(src, path) {
-    let out = [];
     let inComment = false;
 
     let tagBuffer = null;
@@ -67,13 +125,8 @@ function parseScenario(src, path) {
 
     labelCache[path] = {};
 
-    function commitTag() {
-        if (tagBuffer === null) return;
-        const tag = {type: "tag", ...parseTag(tagBuffer)};
-        out.push(tag)
-
-        tagBuffer = null;
-        tagBufferOpener = null;
+    function foresee(what, i) {
+        return src.slice(i, i+what.length) === what;
     }
 
     function commitLabel() {
@@ -81,18 +134,20 @@ function parseScenario(src, path) {
         const bits = labelBuffer.split("|");
         if (bits.length > 2) throw "Why is too many bits!?!?!?!";
 
-        const statement = {type: "label", name: bits[0]};
+        const statement = {id: ++topNodeId, type: "label", name: bits[0]};
         if (bits.length === 2) statement["displayName"] = bits[1];
 
-        labelCache[path][bits[0]] = {pointer: out.length};
-        out.push(statement);
+        labelCache[path][bits[0]] = {
+            pointer: new Pointer(currentNode, currentNode.children.length, path)
+        };
+        currentNode.children.push(statement);
         labelBuffer = null;
     }
 
     function commitText() {
         // Call this when transitioning from normal operation (ie end of loop)
         if (!textBuffer) return;
-        out.push({type: "text", text: textBuffer});
+        currentNode.children.push({id: ++topNodeId, type: "text", text: textBuffer});
         textBuffer = "";
     }
 
@@ -102,7 +157,73 @@ function parseScenario(src, path) {
         return false;
     }
 
+    function commitTag() {
+        if (tagBuffer === null) return;
+        const tag = {type: "tag", ...parseTag(tagBuffer)};
+        tagBuffer = null;
+        tagBufferOpener = null;
+
+        // console.log("Commit:", tag);
+
+        let openCloseInfo;
+        for (const [name, nodeInfo] of Object.entries(blockNodes)) {
+            if (tag.func === nodeInfo.close) {
+                openCloseInfo = nodeInfo;
+                openCloseInfo.name = name;
+                openCloseInfo.state = "close";
+                break;
+            }
+
+            if (tag.func === nodeInfo.open) {
+                openCloseInfo = nodeInfo;
+                openCloseInfo.name = name;
+                openCloseInfo.state = "open";
+                break;
+            }
+        }
+
+        if (!openCloseInfo) {
+            currentNode.children.push(tag);
+            return;
+        }
+
+        if (currentNode.name === "macro" && !(openCloseInfo.name === "macro" && openCloseInfo.state === "close")) {
+            // REAAAAAAAAAALLLY bad hack to basically ignore macros
+            currentNode.children.push(tag);
+            return;
+        }
+
+        if (openCloseInfo.state === "close") {
+            if (openCloseInfo.name !== currentNode.name) {
+                console.error("ERR! Root:", rootNode, "Current:", currentNode);
+                throw `Cant close ${currentNode.name} with ${openCloseInfo.close}`;
+            }
+            if (!currentNode.parent) throw "No parent!";
+            // We are closing!
+            // TODO: TEXTONLY
+            currentNode = currentNode.parent;
+            // console.log("CLOSE");
+            return;
+        } else if (openCloseInfo.state === "open") {
+            // console.log("OPEN");
+            const child = {id: ++topNodeId, ...tag, name: openCloseInfo.name, parent: currentNode, children: []};
+            currentNode.children.push(child);
+            currentNode = child;
+            return;
+        }
+
+        throw "Shouldn't be here...";
+    }
+
+    const rootNode = {id: -1, parent: null, children: [], textOnly: false, name: "root"};
+    let currentNode = rootNode;
+    let topNodeId = 0;
+
     for (let i=0;i<src.length;i++) {
+        if (currentNode.textOnly) {
+            textBuffer += c;
+        }
+
         const c = src[i];
 
         if (inComment) {
@@ -156,39 +277,18 @@ function parseScenario(src, path) {
         textBuffer += c;
     }
 
+    // console.warn(rootNode);
+
     commitTag();
     commitLabel();
     commitText();
 
-    // console.log(out);
-
-    const processedOut = [];
-
-    // Process macros
-    for (const thing of out) {
-        const lastOut = processedOut[processedOut.length - 1] || {};
-        // console.log(thing, lastOut);
-        if (
-            (lastOut.func === "macro" && thing.func !== "endmacro")
-            || (lastOut.func === "iscript" && thing.func !== "endscript")
-        ) {
-            lastOut.code.push(thing);
-            continue;
-        }
-
-        switch (thing.func) {
-            case "macro":
-            case "iscript":
-                thing.code = [];
-                break
-        }
-        processedOut.push(thing);
-    }
-    console.warn("OUT");
-    return processedOut;
+    return rootNode;
 }
 
-function jumpToLabel(label, storage, kickstart=false) {
+function jumpToLabel(label, storage=null, kickstart=false) {
+    if (!storage) storage = executionState.pointer.path;
+    console.log(executionState);
     if (!storage) throw "NO STORAGE";
     cacheStatements(storage);
 
@@ -197,22 +297,22 @@ function jumpToLabel(label, storage, kickstart=false) {
         throw "MISSING "+label;
     }
 
-    jumpTo(storage, labelCache[storage][label].pointer);
+    executionState.pointer = labelCache[storage][label].pointer;
     if (kickstart) runUntilStopped();
 }
 
 function executeTag(tag) {
-    console.warn("EXECUTING", tag);
+    // console.warn("EXECUTING", tag);
     // if hax, yucky and bad
     if (tag.func === "endif") {
         executionState.ifState = null;
         return;
     }
 
-    if (executionState.ifState === false) {
-        console.log("IGNORE--IF");
-        return;
-    }
+    //if (executionState.ifState === false) {
+    //    console.log("IGNORE--IF");
+    //    return;
+    //}
 
     // if (tag.func in macroCache) {
     //     for (const t of macroCache[tag.func]) {
@@ -225,7 +325,7 @@ function executeTag(tag) {
         case "macro":
             if (!tag.args.name) throw "No name for macro :(";
             macroCache[tag.args.name] = tag.code;
-            console.log(macroCache);
+            // console.log(macroCache);
             // throw "HEY";
             break;
         case "iscript":
@@ -258,16 +358,14 @@ function executeTag(tag) {
             console.warn("[note] loadplugin's a no-go. hope that's okay!");
             break;
         case "return":
-            let stackFrame = callStack.pop();
-            console.warn("GOUP", stackFrame);
-            jumpTo(stackFrame.path, stackFrame.pointer);
+            doReturn();
             break;
         case "call":
-            callStack.push({path: executionState.path, pointer: executionState.pointer});
+            callStack.push(executionState.pointer.graft());
         case "jump":
             // TODO: implement returning and make this better obey args
             console.log(tag.func, tag.args);
-            if (!("storage" in tag.args)) tag.args.storage = executionState.path;
+            if (!("storage" in tag.args)) tag.args.storage = executionState.pointer.path;
 
             cacheStatements(tag.args.storage);
 
@@ -278,7 +376,7 @@ function executeTag(tag) {
                 const label = tag.args.target.slice(1);
                 jumpToLabel(label, tag.args.storage);
             } else if (tag.args.storage) {
-                jumpTo(tag.args.storage, 0);
+                executionState.pointer.jumpToFile(tag.args.storage);
             } else {
                 throw "Freak call";
                 console.log(tag);
@@ -296,37 +394,44 @@ function cacheStatements(path) {
     cachedStatements[path] = parseScenario(BigPacked[path], path);
 }
 
-function jumpTo(path, pointer) {
-    executionState.path = path;
-    executionState.pointer = pointer;
-    console.log("cache - jumpto PATH", path, "POINTER", pointer);
-    cacheStatements(path);
-}
-
 function runUntilStopped() {
     console.info("I'm on the run! Unstopping...");
     executionState.stopped = false;
 
     while (!executionState.stopped) {
-        executionState.pointer++;
-        if (executionState.pointer >= cachedStatements[executionState.path].length) break;
+        executionState.pointer.advance();
+        // if (executionState.pointer >= cachedStatements[executionState.path].length) break;
 
-        const statement = cachedStatements[executionState.path][executionState.pointer];
+        const statement = executionState.pointer.statementAt();
+        if (!statement) break;
+
+        // cachedStatements[executionState.path][executionState.pointer];
         if (statement.type === "tag") {
             executeTag(statement);
         }
     }
+
+    if (callStack.length) {
+        doReturn();
+    } else {
+        console.info("End of RUS");
+    }
 }
 
-function runScenario(path) {
-    jumpTo(path, -1);
-    runUntilStopped();
-}
+function step() {
+    executionState.pointer.advance();
+    const statement = executionState.pointer.statementAt();
+    if (!statement) throw "No statement.";
 
-// Init cache
-// for (const k in BigPacked) {
-//     cacheStatements(k);
-// }
+    // cachedStatements[executionState.path][executionState.pointer];
+    if (statement.type === "tag") {
+        console.log("[step] Executing", statement);
+        executeTag(statement);
+    } else {
+        console.log("[step] ...");
+        step();
+    }
+}
 
 // Run! For your life!
-runScenario("first.ks");
+executionState.pointer.jumpToFile("first.ks");

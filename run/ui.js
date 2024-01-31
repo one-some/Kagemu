@@ -133,6 +133,11 @@ function uiPosition(args) {
     //ourGuy.innerText = "";
 }
 
+function uiFadeOutBGM(args) {
+    fixme("fadeoutbgm will just stop it");
+    bgmEl.stop();
+}
+
 function uiPlayBGM(args) {
     // HACK: Assume
     bgmEl.src = `bgm/${args.storage}.ogg`;
@@ -167,7 +172,7 @@ function uiFreeImage(args) {
 }
 
 function uiLayOpt(args) {
-    if (!args.layer) {
+    if (!args.layer || args.layer ==="%layer") {
         alert("We are gonna do a very bad thing");
         args.layer = "0";
     }

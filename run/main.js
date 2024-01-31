@@ -471,6 +471,9 @@ function executeTag(tag, macroDepth=0) {
         case "playbgm":
             uiPlayBGM(tag.args);
             break;
+        case "fadeoutbgm":
+            uiFadeOutBGM(tag.args);
+            break;
         case "title":
             uiSetTitle(tag.args.name);
             break;
@@ -478,6 +481,10 @@ function executeTag(tag, macroDepth=0) {
             console.warn("[note] loadplugin's a no-go. hope that's okay!");
             break;
         case "return":
+            if (tag.args.cond) {
+                const yeaOrNea = exp(tag.args.exp);
+                if (!yeaOrNea) break;
+            }
             doReturn();
             break;
         case "call":

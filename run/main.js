@@ -234,11 +234,12 @@ function parseScenario(src, path) {
 
     const rootNode = {parent: null, children: [], textOnly: false, name: "root"};
     let currentNode = rootNode;
+    let inTagQuote = false;
 
     for (let i=0;i<src.length;i++) {
-        if (currentNode.textOnly) {
-            textBuffer += c;
-        }
+        // if (currentNode.textOnly) {
+        //     textBuffer += c;
+        // }
 
         const c = src[i];
 
@@ -258,11 +259,13 @@ function parseScenario(src, path) {
 
         if (tagBuffer !== null) {
             if (
-                (c === "]" && tagBufferOpener === "[")
+                (c === "]" && !inTagQuote && tagBufferOpener === "[")
                 || (c === "\n" && tagBufferOpener === "@")
             ) {
                 commitTag();
+                inTagQuote = false;
             } else {
+                if (c === '"') inTagQuote = !inTagQuote;
                 tagBuffer += c;
             }
             continue;

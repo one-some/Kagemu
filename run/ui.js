@@ -1,3 +1,4 @@
+const mute = false;
 const cursor = {x: 0, y: 0};
 
 const messageLayers = {
@@ -38,6 +39,7 @@ function uiSetTitle(title) {
 }
 
 function uiPlaySfx(name) {
+    if (mute) return;
     sfxEl.src = `sound/${name}.ogg`;
     sfxEl.play();
 }
@@ -137,6 +139,7 @@ function uiFadeOutBGM(args) {
 }
 
 function uiPlayBGM(args) {
+    if (mute) return;
     // HACK: Assume
     bgmEl.src = `bgm/${args.storage}.ogg`;
     bgmEl.play();
@@ -147,10 +150,6 @@ function uiCurrentLayer(args) {
 }
 
 function uiAddText(text) {
-    // DEBUGGING WEIRD SPACE EATING ON CREAK CREAK CREAK
-    // its html lol
-    console.info(`ADD TEXT: "${text}"`);
-
     const layer = messageLayers[activeMessageLayer];
     for (const line of layer.textLines) {
         if (!(line.pos.x === cursor.x && line.pos.y === cursor.y)) continue;

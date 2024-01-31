@@ -23,6 +23,10 @@ class Pointer {
     graft() {
         return new Pointer(this.node, this.index, this.path);
     }
+    
+    toString() {
+        return `[Ptr :: ${this.path}:${this.index} (${this.node.type})]`;
+    }
 
     jumpTo(node) {
         this.node = node;
@@ -76,7 +80,7 @@ const executionState = Object.seal({
 
 function doReturn() {
     let stackPointer = callStack.pop();
-    console.warn("GOUP", stackPointer);
+    // console.warn("GOUP", stackPointer);
     executionState.pointer = stackPointer;
     executionState.pointer.advance();
 }
@@ -307,7 +311,7 @@ function parseScenario(src, path) {
 
 function jumpToLabel(label, storage=null, kickstart=false) {
     if (!storage) storage = executionState.pointer.path;
-    console.log(executionState);
+    // console.log(executionState);
     if (!storage) throw "NO STORAGE";
     cacheStatements(storage);
 
@@ -333,7 +337,7 @@ function exp(script) {
 
     // https://stackoverflow.com/a/59600907
     // const out = Function(`"use strict"; ${script}`).bind(executionState.scope)();
-    console.info("SCRIPT", script, "OUT", out);
+    // console.info("SCRIPT", script, "OUT", out);
 
     for (const k in executionState.scope) {
         executionState.scope[k] = this[k];
@@ -400,7 +404,7 @@ function executeTag(tag, macroDepth=0) {
         return;
     }
 
-    console.info("EXECUTING", tag);
+    // console.info("EXECUTING", tag);
 
     switch (tag.func) {
         case "macro":
@@ -417,7 +421,6 @@ function executeTag(tag, macroDepth=0) {
             uiAddText(out);
             break;
         case "s":
-            console.info("Stopped");
             executionState.stopped = true;
             break;
         case "close":
@@ -493,8 +496,6 @@ function executeTag(tag, macroDepth=0) {
         case "call":
             callStack.push(executionState.pointer.graft());
         case "jump":
-            // TODO: implement returning and make this better obey args
-            console.log(tag.func, tag.args);
             if (!("storage" in tag.args)) tag.args.storage = executionState.pointer.path;
 
             cacheStatements(tag.args.storage);
@@ -508,8 +509,8 @@ function executeTag(tag, macroDepth=0) {
             } else if (tag.args.storage) {
                 executionState.pointer.jumpToFile(tag.args.storage);
             } else {
-                throw "Freak call";
                 console.log(tag);
+                throw "Freak call";
             }
             break;
         default:
@@ -549,7 +550,7 @@ function runUntilStopped() {
         }
     }
 
-    console.log("Ending! Callstack length:", callStack.length, "Pointer", executionState.pointer);
+    console.log("Ending! Callstack length:", callStack.length, "Pointer", executionState.pointer.toString());
 
     if (callStack.length) {
         console.log("Returning...");

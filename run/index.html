@@ -7,17 +7,27 @@
         }
 
         button {
-            z-index: 10;
+            z-index: 9212;
         }
 
-        #main-text {
-            background-color: #ffffffaa;
-            z-index: 9212;
+        .message-layer {
+            z-index: 10;
             position: absolute;
+            pointer-events: none;
+            color: red;
+        }
+
+        .message-layer p {
+            position: absolute;
+        }
+
+        .hidden {
+            display: none !important;
         }
     </style>
     <body>
-        <p id="main-text"></p>
+        <audio id="bgm" loop="true"></audio>
+        <audio id="sfx"></audio>
 
         <script src="packed.js"></script>
         <script src="ui.js"></script>

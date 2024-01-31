@@ -143,7 +143,7 @@ function parseScenario(src, path) {
         const bits = labelBuffer.split("|");
         if (bits.length > 2) throw "Why is too many bits!?!?!?!";
 
-        const statement = {id: ++topNodeId, type: "label", name: bits[0]};
+        const statement = {type: "label", name: bits[0]};
         if (bits.length === 2) statement["displayName"] = bits[1];
 
         labelCache[path][bits[0]] = {
@@ -155,12 +155,12 @@ function parseScenario(src, path) {
 
     function commitText() {
         // Call this when transitioning from normal operation (ie end of loop)
-
+        //
+        if (!textBuffer) return;
         // HACK
         textBuffer = textBuffer.replaceAll("\n", "");
-        if (!textBuffer) return;
 
-        currentNode.children.push({id: ++topNodeId, type: "text", text: textBuffer});
+        currentNode.children.push({type: "text", text: textBuffer});
         textBuffer = "";
     }
 
@@ -219,7 +219,7 @@ function parseScenario(src, path) {
             return;
         } else if (openCloseInfo.state === "open") {
             // console.log("OPEN");
-            const child = {id: ++topNodeId, ...tag, name: openCloseInfo.name, parent: currentNode, children: []};
+            const child = {...tag, name: openCloseInfo.name, parent: currentNode, children: []};
             currentNode.children.push(child);
             currentNode = child;
             return;
@@ -228,9 +228,8 @@ function parseScenario(src, path) {
         throw "Shouldn't be here...";
     }
 
-    const rootNode = {id: -1, parent: null, children: [], textOnly: false, name: "root"};
+    const rootNode = {parent: null, children: [], textOnly: false, name: "root"};
     let currentNode = rootNode;
-    let topNodeId = 0;
 
     for (let i=0;i<src.length;i++) {
         if (currentNode.textOnly) {
@@ -332,13 +331,13 @@ function callMacro(name, depth) {
             }
             executeTag(t, depth + 1);
         } else if (t.type === "text") {
-            uiAddText(t.text);
+            uiAddText(t.text.replaceAll("\n", ""));
         }
     }
 }
 
 function executeTag(tag, macroDepth=0) {
-    //console.warn("EXECUTING", tag);
+    console.warn("EXECUTING", tag);
     // if hax, yucky and bad
     if (!tag.func) throw "Bad tag func";
 
@@ -369,9 +368,19 @@ function executeTag(tag, macroDepth=0) {
         case "image":
             uiImage(tag.args);
             break;
+        case "layopt":
+            uiLayOpt(tag.args);
+            break;
+        case "freeimage":
+            uiFreeImage(tag.args);
+            break;
         case "cm":
-            // Clear message
+            // Clear all message layers
             uiClearText();
+            break;
+        case "er":
+            // Clear message
+            uiEraseCurrentText();
             break;
         case "r":
             // Newline
@@ -379,12 +388,28 @@ function executeTag(tag, macroDepth=0) {
             uiAddText("\n");
             break;
         case "l":
-            // Wait for click (at end of line)
+        case "p":
+            // Wait for click (at end of line) (or page)
             stopExecution();
             waitingForUIClick = true;
             break;
         case "locate":
             uiLocate(tag.args);
+            break;
+        case "font":
+            uiFont(tag.args);
+            break;
+        case "position":
+            uiPosition(tag.args);
+            break;
+        case "current":
+            uiCurrentLayer(tag.args);
+            break;
+        case "playsfx":
+            uiPlaySFX(tag.storage);
+            break;
+        case "playbgm":
+            uiPlayBGM(tag.args);
             break;
         case "title":
             uiSetTitle(tag.args.name);
@@ -449,8 +474,8 @@ function runUntilStopped() {
         // cachedStatements[executionState.path][executionState.pointer];
         if (statement.type === "tag") {
             executeTag(statement);
-        } else {
-            uiAddText(statement.text);
+        } else if (statement.type === "text") {
+            uiAddText(statement.text.replaceAll("\n", ""));
         }
     }
 

@@ -144,6 +144,7 @@ function uiCurrentLayer(args) {
 }
 
 function uiAddText(text) {
+    // TODO: Slow...?
     messageLayers[activeMessageLayer].p.innerText += text;
 }
 

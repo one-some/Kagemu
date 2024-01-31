@@ -18,7 +18,7 @@ for (const k in messageLayers) {
     const p = document.createElement("p");
 
     div.appendChild(p);
-    div.p = p;
+    div.textLines = [];
 
     messageLayers[k] = div;
     document.body.appendChild(div);
@@ -105,8 +105,6 @@ function uiFont(args) {
 function uiLocate(args) {
     if ("x" in args) cursor.x = args.x;
     if ("y" in args) cursor.y = args.y;
-    messageLayers[activeMessageLayer].p.style.left = `${cursor.x}px`;
-    messageLayers[activeMessageLayer].p.style.bottom = `${cursor.y}px`;
 }
 
 function uiPosition(args) {
@@ -149,18 +147,33 @@ function uiCurrentLayer(args) {
 }
 
 function uiAddText(text) {
-    // TODO: Slow...?
-    messageLayers[activeMessageLayer].p.innerText += text;
+    const layer = messageLayers[activeMessageLayer];
+    for (const line of layer.textLines) {
+        if (!(line.pos.x === cursor.x && line.pos.y === cursor.y)) continue;
+        // FIXME: Slow...?
+        line.p.innerText += text;
+        return;
+    }
+
+    const p = document.createElement("p");
+    p.innerText = text;
+    p.style.left = `${cursor.x}px`;
+    p.style.bottom = `${cursor.y}px`;
+    const line = {pos: {x: cursor.x, y: cursor.y}, p: p};
+    layer.textLines.push(line);
+    layer.appendChild(p);
 }
 
 function uiClearText() {
     for (const layer of Object.values(messageLayers)) {
-        layer.p.innerText = "";
+        layer.innerText = "";
+        layer.textLines = [];
     }
 }
 
 function uiEraseCurrentText() {
-    messageLayers[activeMessageLayer].p.innerText = "";
+    messageLayers[activeMessageLayer].innerText = "";
+    messageLayers[activeMessageLayer].textLines = [];
 }
 
 function uiFreeImage(args) {

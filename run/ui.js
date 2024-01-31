@@ -9,6 +9,7 @@ const messageLayers = {
 };
 
 let activeMessageLayer = "message0";
+let activeLayer = "0";
 
 for (const k in messageLayers) {
     const div = document.createElement("div");
@@ -29,7 +30,7 @@ bgmEl.volume = 0.5;
 const sfxEl = document.getElementById("sfx");
 sfxEl.volume = 0.5;
 
-const imageLayers = {}
+const normalLayers = {}
 let waitingForUIClick = false;
 
 function uiSetTitle(title) {
@@ -55,6 +56,7 @@ function uiMakeButton(args) {
     img.src = url;
 
     b.innerText = args.hint || "";
+    b.title = args.hint || "";
     b.style.position = "absolute";
     b.style.left = `${cursor.x}px`;
     b.style.top = `${cursor.y}px`;
@@ -78,7 +80,7 @@ function uiMakeButton(args) {
             uiPlaySfx(args.leavese);
         });
     }
-    document.body.appendChild(b);
+    messageLayers[activeMessageLayer].appendChild(b);
 }
 
 function uiFont(args) {
@@ -146,11 +148,10 @@ function uiEraseCurrentText() {
 
 function uiFreeImage(args) {
     if (args.layer === undefined) throw "No layer on freeimg!";
+    if (!normalLayers[args.layer]?.img) return;
 
-    if (imageLayers[args.layer]) {
-        imageLayers[args.layer].remove();
-        imageLayers[args.layer] = null;
-    }
+    normalLayers[args.layer].img.remove();
+    normalLayers[args.layer].img = null;
 }
 
 function uiLayOpt(args) {
@@ -160,7 +161,7 @@ function uiLayOpt(args) {
     if (args.layer.startsWith("message")) {
         ourGuy = messageLayers[args.layer];
     } else {
-        ourGuy = imageLayers[args.layer];
+        ourGuy = normalLayers[args.layer];
     }
 
     if (!ourGuy) throw `BAD LAYER ${args.layer}`;
@@ -168,16 +169,29 @@ function uiLayOpt(args) {
     if (args.visible !== undefined) ourGuy.classList.toggle("hidden", !args.visible);
 }
 
+function ensureLayer(name) {
+    if (normalLayers[name]) return normalLayers[name];
+
+    const layer = document.createElement("div");
+    layer.classList.add("layer");
+    layer.img = null;
+    normalLayers[name] = layer;
+    document.body.appendChild(layer);
+    return layer;
+}
+
 function uiImage(args) {
     if (args.storage === undefined) throw "No storage on img!";
     if (args.layer === undefined) throw "No layer on img!";
 
-    if (imageLayers[args.layer]) {
-        imageLayers[args.layer].remove();
-    }
+    // HACK
+    if (isNaN(parseInt(args.layer))) args.layer = "0";
+
+    const layer = ensureLayer(args.layer);
+    uiFreeImage({layer: args.layer});
 
     const image = new Image();
-    imageLayers[args.layer] = image;
+    layer.img = image;
 
     // We are making a good few assumptions here and lotsa hax
     image.onerror = function() {

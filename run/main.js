@@ -34,7 +34,6 @@ class Pointer {
         this.path = path;
         this.jumpTo(cachedStatements[path]);
 
-        // FIXME uhhhhh what!
         if (executionState.stopped) runUntilStopped();
     }
 
@@ -548,29 +547,6 @@ function runUntilStopped() {
         runUntilStopped();
     } else {
         console.info("End of RUS");
-    }
-}
-
-function step() {
-    executionState.pointer.advance();
-    const statement = executionState.pointer.statementAt();
-
-    if (!statement) {
-        if (callStack.length) {
-            console.info("[loop] Reached end, returning");
-            doReturn();
-            return;
-        }
-        throw "No statement.";
-    }
-
-    // cachedStatements[executionState.path][executionState.pointer];
-    if (statement.type === "tag") {
-        console.log("[step] Executing", statement);
-        executeTag(statement);
-    } else {
-        console.log("[step] ...");
-        step();
     }
 }
 

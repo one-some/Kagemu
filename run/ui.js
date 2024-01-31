@@ -147,15 +147,21 @@ function uiCurrentLayer(args) {
 }
 
 function uiAddText(text) {
+    // DEBUGGING WEIRD SPACE EATING ON CREAK CREAK CREAK
+    // its html lol
+    console.info(`ADD TEXT: "${text}"`);
+
     const layer = messageLayers[activeMessageLayer];
     for (const line of layer.textLines) {
         if (!(line.pos.x === cursor.x && line.pos.y === cursor.y)) continue;
         // FIXME: Slow...?
-        line.p.innerText += text;
+        line.p.dataText += text;
+        line.p.innerText = line.p.dataText;
         return;
     }
 
     const p = document.createElement("p");
+    p.dataText = text;
     p.innerText = text;
     p.style.left = `${cursor.x}px`;
     p.style.bottom = `${cursor.y}px`;

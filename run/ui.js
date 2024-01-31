@@ -50,8 +50,8 @@ function uiMakeButton(args) {
     const url = `image/${args.graphic}.png`;
     const img = new Image();
     img.onload = function() {
-        b.style.width = `${this.width}px`;
-        b.style.height = `${this.height}px`;
+        b.style.width = `${this.naturalWidth}px`;
+        b.style.height = `${this.naturalHeight}px`;
     }
     img.src = url;
 
@@ -95,7 +95,7 @@ function uiLocate(args) {
     if ("x" in args) cursor.x = args.x;
     if ("y" in args) cursor.y = args.y;
     messageLayers[activeMessageLayer].p.style.left = `${cursor.x}px`;
-    messageLayers[activeMessageLayer].p.style.top = `${cursor.y}px`;
+    messageLayers[activeMessageLayer].p.style.bottom = `${cursor.y}px`;
 }
 
 function uiPosition(args) {

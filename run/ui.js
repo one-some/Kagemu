@@ -135,7 +135,7 @@ function uiPosition(args) {
 
 function uiFadeOutBGM(args) {
     fixme("fadeoutbgm will just stop it");
-    bgmEl.stop();
+    bgmEl.pause();
 }
 
 function uiPlayBGM(args) {
@@ -172,9 +172,9 @@ function uiFreeImage(args) {
 }
 
 function uiLayOpt(args) {
-    if (!args.layer || args.layer ==="%layer") {
-        alert("We are gonna do a very bad thing");
-        args.layer = "0";
+    if (!args.layer || args.layer === "%layer") {
+        fixme("HACK: Totally bogus layer hack to fix macro params");
+        args.layer = activeLayer;
     }
     if (args.layer === "message") args.layer = activeMessageLayer;
 

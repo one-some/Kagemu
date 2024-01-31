@@ -390,14 +390,14 @@ function callMacro(name, depth, args) {
 }
 
 function executeTag(tag, macroDepth=0) {
-    // console.warn("EXECUTING", tag);
-    // if hax, yucky and bad
     if (!tag.func) throw "Bad tag func";
 
     if (tag.func in macroCache) {
         callMacro(tag.func, macroDepth, tag.args);
         return;
     }
+
+    console.info("EXECUTING", tag);
 
     switch (tag.func) {
         case "macro":

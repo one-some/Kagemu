@@ -8,6 +8,7 @@ const blockNodes = {
     macro: {open: "macro", close: "endmacro"},
     "if": {open: "if", close: "endif"},
 };
+const macroArgs = {};
 
 // FIXME: STUB
 BigPacked["achievements.ks"] = "[return]\n[return]";
@@ -68,6 +69,10 @@ class Pointer {
 const executionState = Object.seal({
     pointer: new Pointer(null, 0),
     stopped: true,
+    scope: {
+        // TODO: TEMP?
+        tf: {},
+    },
 });
 
 function doReturn() {
@@ -201,7 +206,7 @@ function parseScenario(src, path) {
         }
 
         if (currentNode.name === "macro" && !(openCloseInfo.name === "macro" && openCloseInfo.state === "close")) {
-            // REAAAAAAAAAALLLY bad hack to basically ignore macros
+            // HACK: Ignore blocks in macro
             currentNode.children.push(tag);
             return;
         }
@@ -313,36 +318,85 @@ function jumpToLabel(label, storage=null, kickstart=false) {
     if (kickstart) runUntilStopped();
 }
 
-function callMacro(name, depth) {
+function exp(script) {
+    Object.assign(this, executionState.scope);
+
+    let out;
+    try {
+        out = eval(script);
+    } catch (exception) {
+        console.error(`TJS Error: ${exception} Script:\n${script}`);
+        return undefined;
+    }
+
+    // https://stackoverflow.com/a/59600907
+    // const out = Function(`"use strict"; ${script}`).bind(executionState.scope)();
+    console.info("SCRIPT", script, "OUT", out);
+
+    for (const k in executionState.scope) {
+        executionState.scope[k] = this[k];
+    }
+
+    return out;
+}
+
+function callMacro(name, depth, args) {
     if (!name) throw "MACRO: UNNAMED MACRO CALL";
     if (depth > 100) {
         console.error(name);
         throw "MACRO: IN 2 DEEP";
     }
+    if (macroCache[name] === undefined) throw `MACRO: Invalid macro ${name}`;
 
-    // console.info(`Call macro ${name}`, macroCache[name]);
+    if (args[""] === "*") {
+        console.error("TODO: PASS ALL ARGS FROM PARENT MACRO!!!!");
+        args = {};
+    }
 
-    //return;
+    // Inline eval (TODO: Make this happen at a higher level)
+    for (let [k, v] of Object.entries(args)) {
+        if (!v || v[0] !== "&") continue;
+        v = v.slice(1);
+        args[k] = exp(v);
+    }
+
+    const oldMP = structuredClone(executionState.scope.mp);
+    executionState.scope.mp = {...executionState.scope.mp, ...args};
+
     for (const t of macroCache[name].children) {
         if (t.type === "tag") {
             if (t.func === "macro") {
                 console.warn(`IGNORING nested macro tag ${t.func}`);
                 continue;
             }
+
+            // Arg from macro
+            for (let [k, v] of Object.entries(t.args)) {
+                if (!v || v[0] !== "%") continue;
+                v = v.slice(1);
+                t.args[k] = args[v];
+            }
+
             executeTag(t, depth + 1);
         } else if (t.type === "text") {
             uiAddText(t.text.replaceAll("\n", ""));
         }
     }
+
+    // HACK
+    executionState.scope.mp = oldMP;
+    // for (const k in args) {
+    //     delete executionState.scope.mp[k];
+    // }
 }
 
 function executeTag(tag, macroDepth=0) {
-    console.warn("EXECUTING", tag);
+    // console.warn("EXECUTING", tag);
     // if hax, yucky and bad
     if (!tag.func) throw "Bad tag func";
 
     if (tag.func in macroCache) {
-        callMacro(tag.func, macroDepth);
+        callMacro(tag.func, macroDepth, tag.args);
         return;
     }
 
@@ -352,6 +406,13 @@ function executeTag(tag, macroDepth=0) {
             macroCache[tag.args.name] = tag;
             break;
         case "iscript":
+            break;
+        case "eval":
+            exp(tag.args.exp);
+            break;
+        case "emb":
+            const out = exp(tag.args.exp);
+            uiAddText(out);
             break;
         case "s":
             console.info("Stopped");

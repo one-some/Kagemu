@@ -88,6 +88,17 @@ function uiFont(args) {
     if (args.size !== undefined) ourGuy.style.fontSize = `${args.size}px`;
     // Won't work....?
     if (args.face !== undefined) ourGuy.style.fontFamily = args.face;
+    if (args.color !== undefined) {
+        args.color = args.color.replaceAll("0x", "#");
+        ourGuy.style.color = args.color;
+    }
+
+    if (args.shadow === "false") ourGuy.style.textShadow = "none";
+    if (args.shadowcolor !== undefined) {
+        args.shadowcolor = args.shadowcolor.replaceAll("0x", "#");
+        ourGuy.style.textShadow = `${args.shadowcolor} 2px 2px`;
+    }
+
     ourGuy.style.fontWeight = args.bold ? "bold" : "unset";
 }
 
@@ -155,6 +166,10 @@ function uiFreeImage(args) {
 }
 
 function uiLayOpt(args) {
+    if (!args.layer) {
+        alert("We are gonna do a very bad thing");
+        args.layer = "0";
+    }
     if (args.layer === "message") args.layer = activeMessageLayer;
 
     let ourGuy;
@@ -227,10 +242,14 @@ function uiImage(args) {
     console.warn(args);
 }
 
-document.body.addEventListener("click", function() {
+function advanceIfStopped() {
     if (!waitingForUIClick) return;
     waitingForUIClick = false;
     runUntilStopped();
-}, true);
+}
+
+document.body.addEventListener("click", advanceIfStopped, true);
+
+window.addEventListener("keydown", advanceIfStopped);
 
 console.log("LIVE TO TELL THE TALE");

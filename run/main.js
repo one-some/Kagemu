@@ -71,6 +71,8 @@ const executionState = Object.seal({
     scope: {
         // TODO: TEMP?
         tf: {},
+        sf: {},
+        f: {},
     },
 });
 
@@ -329,16 +331,30 @@ function jumpToLabel(label, storage=null, kickstart=false) {
 }
 
 function exp(script) {
+    if (!script) return;
+
     const preKeys = Object.keys(this);
     for (const [k, v] of Object.entries(executionState.scope)) {
         this[k] = v;
     }
+
+    // really awful hacks to maybe get stuff to compile
+    // With else
+    script = script.replaceAll("else if", "$elif$");
+    script = script.replace(/([^ (]+) if (.*) else ([^ );]+)/gm, "$2 ? $1 : $3");
+    // No else
+    // TODO: Implicit value determined by type
+    script = script.replace(/([^ (]+) if ([^);]+)/gm, "$2 ? $1 : 0");
+    script = script.replaceAll("void", "undefined");
+    script = script.replaceAll("$elif$", "else if");
 
     let out;
     try {
         out = eval(script);
     } catch (exception) {
         console.error(`TJS Error: ${exception} Script:\n${script}`);
+        console.error(executionState.pointer.path);
+        // throw "TJS Err!";
         return undefined;
     }
 

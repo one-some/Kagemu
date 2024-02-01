@@ -274,6 +274,25 @@ function advanceIfStopped() {
 
 document.body.addEventListener("click", advanceIfStopped, true);
 
-window.addEventListener("keydown", advanceIfStopped);
+let skipHeld = false;
+
+window.addEventListener("keydown", function(event) {
+    switch (event.key) {
+        case "Shift":
+            skipHeld = true;
+            break;
+        case " ":
+            advanceIfStopped();
+            break;
+    }
+});
+
+window.addEventListener("keyup", function(event) {
+    if (event.key === "Shift") skipHeld = false;
+});
+
+setInterval(function() {
+    if (skipHeld) advanceIfStopped();
+}, 0);
 
 console.log("LIVE TO TELL THE TALE");

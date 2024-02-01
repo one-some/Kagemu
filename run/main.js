@@ -471,8 +471,8 @@ function executeTag(tag, macroDepth=0) {
         case "current":
             uiCurrentLayer(tag.args);
             break;
-        case "playsfx":
-            uiPlaySFX(tag.storage);
+        case "playse":
+            uiPlaySfx(tag.args.storage);
             break;
         case "playbgm":
             uiPlayBGM(tag.args);

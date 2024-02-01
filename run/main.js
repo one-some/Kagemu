@@ -329,7 +329,10 @@ function jumpToLabel(label, storage=null, kickstart=false) {
 }
 
 function exp(script) {
-    Object.assign(this, executionState.scope);
+    const preKeys = Object.keys(this);
+    for (const [k, v] of Object.entries(executionState.scope)) {
+        this[k] = v;
+    }
 
     let out;
     try {
@@ -343,7 +346,8 @@ function exp(script) {
     // const out = Function(`"use strict"; ${script}`).bind(executionState.scope)();
     console.info("SCRIPT", script, "OUT", out);
 
-    for (const k in executionState.scope) {
+    for (const [k, v] of Object.entries(this)) {
+        if (!(k in preKeys)) continue;
         executionState.scope[k] = this[k];
     }
 
@@ -406,13 +410,30 @@ function nodeToReal(node) {
     for (const child of node.children || []) {
         out += nodeToReal(child);
     }
+
+    if (out.endsWith("\n[") || out.endsWith("@")) {
+        out = out.slice(0, -1);
+    }
+
     return out;
 }
 
 function executeIScriptNode(node) {
-    const script = nodeToReal(node);
+    let script = nodeToReal(node).trim();
+    let lines = script.split("\n");
+    lines = lines.filter(x => !x.startsWith("//"));
+
+    if (lines[0].includes("iscript")) {
+        fixme("AWFUL HACK THAT WILL BREAK EVERYTHING!!!!");
+        lines = lines.slice(1);
+    }
+
+    script = lines.join("\n");
+
+
+    console.log("Run!");
     console.log(script);
-    alert("OK");
+    exp(script);
 }
 
 function executeTag(tag, macroDepth=0) {

@@ -147,8 +147,7 @@ function uiCurrentLayer(args) {
 }
 
 function uiAddText(text) {
-    // DEBUGGING WEIRD SPACE EATING ON CREAK CREAK CREAK
-    // its html lol
+    if (!text) return;
     console.info(`ADD TEXT: "${text}"`);
 
     const layer = messageLayers[activeMessageLayer];

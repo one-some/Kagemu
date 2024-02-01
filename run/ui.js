@@ -1,3 +1,4 @@
+const mute = false;
 const cursor = {x: 0, y: 0};
 
 const messageLayers = {
@@ -38,6 +39,7 @@ function uiSetTitle(title) {
 }
 
 function uiPlaySfx(name) {
+    if (mute) return;
     sfxEl.src = `sound/${name}.ogg`;
     sfxEl.play();
 }
@@ -137,6 +139,7 @@ function uiFadeOutBGM(args) {
 }
 
 function uiPlayBGM(args) {
+    if (mute) return;
     // HACK: Assume
     bgmEl.src = `bgm/${args.storage}.ogg`;
     bgmEl.play();

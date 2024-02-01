@@ -444,7 +444,7 @@ function executeTag(tag, macroDepth=0) {
         return;
     }
 
-    console.info("EXECUTING", tag);
+    // console.info("EXECUTING", tag);
 
     switch (tag.func) {
         case "macro":

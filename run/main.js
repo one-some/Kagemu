@@ -138,6 +138,12 @@ function parseScenario(src, path) {
 
     labelCache[path] = {};
 
+    function commitNode(node) {
+        node.real = realBuffer;
+        realBuffer = "";
+        currentNode.children.push(node);
+    }
+
     function foresee(what, i) {
         return src.slice(i, i+what.length) === what;
     }
@@ -153,7 +159,7 @@ function parseScenario(src, path) {
         labelCache[path][bits[0]] = {
             pointer: new Pointer(currentNode, currentNode.children.length, path)
         };
-        currentNode.children.push(statement);
+        commitNode(statement);
         labelBuffer = null;
     }
 
@@ -164,7 +170,7 @@ function parseScenario(src, path) {
         // HACK
         textBuffer = textBuffer.replaceAll("\n", "");
 
-        currentNode.children.push({type: "text", text: textBuffer});
+        commitNode({type: "text", text: textBuffer});
         textBuffer = "";
     }
 
@@ -200,13 +206,13 @@ function parseScenario(src, path) {
         }
 
         if (!openCloseInfo) {
-            currentNode.children.push(tag);
+            commitNode(tag);
             return;
         }
 
         if (currentNode.name === "macro" && !(openCloseInfo.name === "macro" && openCloseInfo.state === "close")) {
             // HACK: Ignore blocks in macro
-            currentNode.children.push(tag);
+            commitNode(tag);
             return;
         }
 
@@ -224,7 +230,7 @@ function parseScenario(src, path) {
         } else if (openCloseInfo.state === "open") {
             // console.log("OPEN");
             const child = {...tag, name: openCloseInfo.name, parent: currentNode, children: []};
-            currentNode.children.push(child);
+            commitNode(child);
             currentNode = child;
             return;
         }
@@ -235,6 +241,7 @@ function parseScenario(src, path) {
     const rootNode = {parent: null, children: [], textOnly: false, name: "root"};
     let currentNode = rootNode;
     let inTagQuote = false;
+    let realBuffer = "";
 
     for (let i=0;i<src.length;i++) {
         // if (currentNode.textOnly) {
@@ -242,6 +249,7 @@ function parseScenario(src, path) {
         // }
 
         const c = src[i];
+        realBuffer += c;
 
         if (inComment) {
             if (c === "\n") inComment = false;
@@ -392,6 +400,21 @@ function callMacro(name, depth, args) {
     // }
 }
 
+function nodeToReal(node) {
+    let out = "";
+    out += node.real;
+    for (const child of node.children || []) {
+        out += nodeToReal(child);
+    }
+    return out;
+}
+
+function executeIScriptNode(node) {
+    const script = nodeToReal(node);
+    console.log(script);
+    alert("OK");
+}
+
 function executeTag(tag, macroDepth=0) {
     if (!tag.func) throw "Bad tag func";
 
@@ -408,6 +431,7 @@ function executeTag(tag, macroDepth=0) {
             macroCache[tag.args.name] = tag;
             break;
         case "iscript":
+            executeIScriptNode(tag);
             break;
         case "eval":
             exp(tag.args.exp);

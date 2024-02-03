@@ -151,7 +151,7 @@ function uiCurrentLayer(args) {
 
 function uiAddText(text) {
     if (!text) return;
-    console.info(`ADD TEXT: "${text}"`);
+    // console.info(`ADD TEXT: "${text}"`);
 
     const layer = messageLayers[activeMessageLayer];
     for (const line of layer.textLines) {

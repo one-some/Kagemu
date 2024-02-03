@@ -1,4 +1,7 @@
 // https://kirikirikag.sourceforge.net/contents/index.html
+const IGNORE_BADPATH = true;
+const IGNORE_TJS_ERRORS = true;
+
 const cachedStatements = {};
 const callStack = [];
 const labelCache = {};
@@ -78,9 +81,6 @@ const executionState = Object.seal({
         tf: {},
         sf: {},
         f: {},
-        kag: {
-            get current() { return kagCurrentMessageLayer(); }
-        }
     },
 });
 
@@ -355,42 +355,42 @@ function jumpToLabel(label, storage=null, kickstart=false) {
     if (kickstart) runUntilStopped();
 }
 
-const exp = (function (kagemu_script) {
-    if (!kagemu_script) return;
+const exp = (function (script) {
+    if (!script) return;
 
+    // Graft
     for (const [k, v] of Object.entries(executionState.scope)) {
-        this[k] = v;
+        console.log("Grafting", k, "with val", v);
+        sandboxFrame.contentWindow[k] = v;
     }
 
     // really awful hacks to maybe get stuff to compile
     // With else
-    kagemu_script = kagemu_script.replaceAll("else if", "$elif$");
-    kagemu_script = kagemu_script.replace(/([^ (]+) if (.*) else ([^ );]+)/gm, "$2 ? $1 : $3");
+    script = script.replaceAll("else if", "$elif$");
+    script = script.replace(/([^ (]+) if (.*) else ([^ );]+)/gm, "$2 ? $1 : $3");
     // No else
-    // TODO: Implicit value determined by type
-    kagemu_script = kagemu_script.replace(/([^ ]+) if ([^;]+)/gm, "$2 ? $1 : 0");
-    kagemu_script = kagemu_script.replaceAll("void", "undefined");
-    kagemu_script = kagemu_script.replaceAll("$elif$", "else if");
+    // script = script.replace(/([^ ]+) if ([^;]+)/gm, "$2 ? $1 : 0");
+    script = script.replace(/(.*?) if ([^;]+)/gm, "if ($2) $1");
 
-    let kagemu_out;
+    script = script.replaceAll("void", "undefined");
+    script = script.replaceAll("$elif$", "else if");
+
+    let out;
     try {
-        kagemu_out = eval(kagemu_script);
+        out = sandboxFrame.contentWindow.eval(script);
     } catch (exception) {
-        console.error(`TJS Error: ${exception} Script:\n${kagemu_script}`);
+        console.error(`TJS Error: ${exception} Script:\n${script}`);
         console.error(executionState.pointer.path);
-        throw "TJS Err!";
+        if (!IGNORE_TJS_ERRORS) throw "TJS Err!";
         return undefined;
     }
 
-    // https://stackoverflow.com/a/59600907
-    // const out = Function(`"use strict"; ${script}`).bind(executionState.scope)();
-    // console.info("SCRIPT", script, "OUT", out);
+    // TODO: Graft back in
+    // for (const [k, v] of Object.entries(this)) {
+    //     executionState.scope[k] = v;
+    // }
 
-    for (const [k, v] of Object.entries(this)) {
-        executionState.scope[k] = v;
-    }
-
-    return kagemu_out;
+    return out;
 }).bind({});
 
 function callMacro(name, depth, args) {
@@ -599,7 +599,12 @@ function executeTag(tag, macroDepth=0) {
 function cacheStatements(path) {
     if (path in cachedStatements) return;
     if (!path) throw "No path to cache dummy!";
-    if (BigPacked[path] === undefined) throw `idk what '${path}' is...`;
+
+    if (BigPacked[path] === undefined) {
+        if (IGNORE_BADPATH) return;
+        throw `idk what '${path}' is...`;
+    }
+
     cachedStatements[path] = parseScenario(BigPacked[path], path);
 }
 

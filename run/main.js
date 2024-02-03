@@ -69,6 +69,7 @@ class Pointer {
     }
 }
 
+
 const executionState = Object.seal({
     pointer: new Pointer(null, 0),
     stopped: true,
@@ -77,6 +78,9 @@ const executionState = Object.seal({
         tf: {},
         sf: {},
         f: {},
+        kag: {
+            get current() { return kagCurrentMessageLayer(); }
+        }
     },
 });
 
@@ -130,11 +134,10 @@ function parseTag(str) {
 }
 
 function parseScenario(src, path) {
-    let inComment = false;
-
     let tagBuffer = null;
     let tagBufferOpener = null;
     let labelBuffer = null;
+    let commentBuffer = null
     // Text buffer is aways open, not null.
     let textBuffer = "";
 
@@ -169,10 +172,16 @@ function parseScenario(src, path) {
         labelBuffer = null;
     }
 
+    function commitComment() {
+        if (commentBuffer === null) return;
+        commitNode({type: "comment", contents: commentBuffer});
+        commentBuffer = null;
+    }
+
     function commitText() {
         // Call this when transitioning from normal operation (ie end of loop)
         //
-        if (!textBuffer) return;
+        if (!textBuffer || textBuffer === "\n") return;
         // HACK
         textBuffer = textBuffer.replaceAll("\n", "");
 
@@ -255,10 +264,15 @@ function parseScenario(src, path) {
         // }
 
         const c = src[i];
-        realBuffer += c;
 
-        if (inComment) {
-            if (c === "\n") inComment = false;
+        if (commentBuffer !== null) {
+            if (c === "\n") {
+                commitComment();
+            } else {
+                commentBuffer += c;
+            }
+            realBuffer += c;
+            // NOTE: Don't add to realBuffer
             continue;
         }
 
@@ -268,6 +282,7 @@ function parseScenario(src, path) {
             } else {
                 labelBuffer += c;
             }
+            realBuffer += c;
             continue;
         }
 
@@ -276,11 +291,13 @@ function parseScenario(src, path) {
                 (c === "]" && !inTagQuote && tagBufferOpener === "[")
                 || (c === "\n" && tagBufferOpener === "@")
             ) {
+                realBuffer += c;
                 commitTag();
                 inTagQuote = false;
             } else {
                 if (c === '"') inTagQuote = !inTagQuote;
                 tagBuffer += c;
+                realBuffer += c;
             }
             continue;
         }
@@ -288,12 +305,14 @@ function parseScenario(src, path) {
         if (c === ";" && isNewline(i)) {
             inComment = true;
             commitText();
+            // NOTE: Don't add to realBuffer
             continue;
         }
 
         if (c === "*" && isNewline(i)) {
             labelBuffer = "";
             commitText();
+            realBuffer += c;
             continue;
         }
 
@@ -304,10 +323,12 @@ function parseScenario(src, path) {
             tagBuffer = "";
             tagBufferOpener = c;
             commitText();
+            realBuffer += c;
             continue;
         }
 
         textBuffer += c;
+        realBuffer += c;
     }
 
     // console.warn(rootNode);
@@ -334,31 +355,30 @@ function jumpToLabel(label, storage=null, kickstart=false) {
     if (kickstart) runUntilStopped();
 }
 
-function exp(script) {
-    if (!script) return;
+const exp = (function (kagemu_script) {
+    if (!kagemu_script) return;
 
-    const preKeys = Object.keys(this);
     for (const [k, v] of Object.entries(executionState.scope)) {
         this[k] = v;
     }
 
     // really awful hacks to maybe get stuff to compile
     // With else
-    script = script.replaceAll("else if", "$elif$");
-    script = script.replace(/([^ (]+) if (.*) else ([^ );]+)/gm, "$2 ? $1 : $3");
+    kagemu_script = kagemu_script.replaceAll("else if", "$elif$");
+    kagemu_script = kagemu_script.replace(/([^ (]+) if (.*) else ([^ );]+)/gm, "$2 ? $1 : $3");
     // No else
     // TODO: Implicit value determined by type
-    script = script.replace(/([^ (]+) if ([^);]+)/gm, "$2 ? $1 : 0");
-    script = script.replaceAll("void", "undefined");
-    script = script.replaceAll("$elif$", "else if");
+    kagemu_script = kagemu_script.replace(/([^ ]+) if ([^;]+)/gm, "$2 ? $1 : 0");
+    kagemu_script = kagemu_script.replaceAll("void", "undefined");
+    kagemu_script = kagemu_script.replaceAll("$elif$", "else if");
 
-    let out;
+    let kagemu_out;
     try {
-        out = eval(script);
+        kagemu_out = eval(kagemu_script);
     } catch (exception) {
-        console.error(`TJS Error: ${exception} Script:\n${script}`);
+        console.error(`TJS Error: ${exception} Script:\n${kagemu_script}`);
         console.error(executionState.pointer.path);
-        // throw "TJS Err!";
+        throw "TJS Err!";
         return undefined;
     }
 
@@ -367,12 +387,11 @@ function exp(script) {
     // console.info("SCRIPT", script, "OUT", out);
 
     for (const [k, v] of Object.entries(this)) {
-        if (!(k in preKeys)) continue;
-        executionState.scope[k] = this[k];
+        executionState.scope[k] = v;
     }
 
-    return out;
-}
+    return kagemu_out;
+}).bind({});
 
 function callMacro(name, depth, args) {
     if (!name) throw "MACRO: UNNAMED MACRO CALL";
@@ -425,14 +444,11 @@ function callMacro(name, depth, args) {
 }
 
 function nodeToReal(node) {
-    let out = "";
-    out += node.real;
-    for (const child of node.children || []) {
-        out += nodeToReal(child);
-    }
+    let out = node.real;
 
-    if (out.endsWith("\n[") || out.endsWith("@")) {
-        out = out.slice(0, -1);
+    for (const child of node.children || []) {
+        console.log(child);
+        out += nodeToReal(child);
     }
 
     return out;

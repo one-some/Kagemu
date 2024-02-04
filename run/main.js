@@ -1,6 +1,6 @@
 // https://kirikirikag.sourceforge.net/contents/index.html
 const IGNORE_BADPATH = false;
-const IGNORE_TJS_ERRORS = true;
+const IGNORE_TJS_ERRORS = false;
 
 const cachedStatements = {};
 const callStack = [];
@@ -353,16 +353,11 @@ function jumpToLabel(label, storage=null, kickstart=false) {
     if (kickstart) runUntilStopped();
 }
 
-const exp = (function (script) {
-    if (!script) return;
 
-    // Graft
-    for (const [k, v] of Object.entries(executionState.scope)) {
-        console.log("Grafting", k, "with val", v);
-        sandboxFrame.contentWindow[k] = v;
-    }
+function parseTJS(script) {
+    // yeah this is sketch but i dont want to write a real js transpiler!!!
+    console.log("Parsing", script);
 
-    // really awful hacks to maybe get stuff to compile
     // With else
     script = script.replaceAll("else if", "$elif$");
     script = script.replace(/([^ (]+) if (.*) else ([^ );]+)/gm, "$2 ? $1 : $3");
@@ -372,6 +367,85 @@ const exp = (function (script) {
 
     script = script.replaceAll("void", "undefined");
     script = script.replaceAll("$elif$", "else if");
+
+    // Uhhhhhhhhh
+    script = script.replaceAll(/invalidate .*/gm, "");
+
+
+    // pray for convention
+    let initAssignmentChunk = /class.*?{(.*?)function/gms.exec(script);
+    if (initAssignmentChunk) {
+        let assignmentString = "";
+        for (let line of initAssignmentChunk[1].split("\n")) {
+            // Zap comments
+            line = line.split("//")[0];
+            line = line.trim();
+            // Zap semicolons
+            line = line.replace(/;$/, "");
+            if (!line) continue;
+
+            const bits = line.split(" ");
+            // Zap var
+            if (bits.shift() !== "var") throw "Expected 'var'";
+
+            const name = bits.shift();
+            if (name.includes("=")) throw "Uh oh equals in the name";
+
+            // Uninitialized assignment
+            let result;
+            if (!bits.length) {
+                result = undefined;
+            } else {
+                if (bits.shift() !== "=") throw "Expected '='";
+                result = bits.join(" ");
+            }
+
+            assignmentString += `this.${name} = ${result};\n`;
+        }
+
+        assignmentString = assignmentString.trim();
+
+        script = script.replace(/class(.*?){.*?function/gms, `class$1{\nconstructor() {\n${assignmentString}\n}\nfunction`);
+        //initAssignmentChunk = ;
+        console.log(initAssignmentChunk);
+        //throw "Now stop"
+    }
+
+    // JS methods don't like "function" keyword
+    const funcRe = /(class.*?{.*?)function\s(\S+\()/gms;
+    while (funcRe.test(script)) {
+        script = script.replace(funcRe, "$1$2");
+    }
+
+    // Integer division operator
+    script = script.replace(/([A-Za-z0-9]+\s*)\\(\s*[A-Za-z0-9]+)/gm, "Math.round($1/$2)");
+
+    // Probably *args type stuff. Ignore 4 now.
+    script = script.replaceAll("(...)", "()");
+
+
+    const withRe = /(with \((.*)\).*?{.*?\s)(\.[A-Za-z]+)/gms;
+    alert("The withre regex that is designed to expand implicit .s in with blocks takes reallllly long and freezes everything. pls fix");
+    debugger;
+    while (withRe.test(script)) {
+        console.log("EXC");
+        script = script.replace(withRe, "$1$2$3");
+    }
+
+    return script;
+}
+
+
+const exp = (function (script) {
+    if (!script) return;
+
+    // Graft
+    for (const [k, v] of Object.entries(executionState.scope)) {
+        console.log("Grafting", k, "with val", v);
+        sandboxFrame.contentWindow[k] = v;
+    }
+
+    script = parseTJS(script);
 
     let out;
     try {

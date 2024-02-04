@@ -1,5 +1,5 @@
 // https://kirikirikag.sourceforge.net/contents/index.html
-const IGNORE_BADPATH = true;
+const IGNORE_BADPATH = false;
 const IGNORE_TJS_ERRORS = true;
 
 const cachedStatements = {};
@@ -12,9 +12,6 @@ const blockNodes = {
     "if": {open: "if", close: "endif"},
 };
 const macroArgs = {};
-
-// FIXME: STUB
-BigPacked["achievements.ks"] = "[return]\n[return]";
 
 class Pointer {
     constructor(node, index, path) {
@@ -38,6 +35,7 @@ class Pointer {
 
     jumpToFile(path) {
         cacheStatements(path);
+        if (!cachedStatements[path]) throw `Unable to fetch statements for ${path}`;
         this.path = path;
         this.jumpTo(cachedStatements[path]);
 
@@ -233,7 +231,7 @@ function parseScenario(src, path) {
 
         if (openCloseInfo.state === "close") {
             if (openCloseInfo.name !== currentNode.name) {
-                console.error("ERR! Root:", rootNode, "Current:", currentNode);
+                console.error("ERR! Root:", rootNode, "Current:", currentNode, "Path:", path);
                 throw `Cant close ${currentNode.name} with ${openCloseInfo.close}`;
             }
             if (!currentNode.parent) throw "No parent!";
@@ -303,7 +301,7 @@ function parseScenario(src, path) {
         }
 
         if (c === ";" && isNewline(i)) {
-            inComment = true;
+            commentBuffer = "";
             commitText();
             // NOTE: Don't add to realBuffer
             continue;

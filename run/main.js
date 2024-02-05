@@ -371,7 +371,6 @@ function parseTJS(script) {
     // Uhhhhhhhhh
     script = script.replaceAll(/invalidate .*/gm, "");
 
-
     // pray for convention
     let initAssignmentChunk = /class.*?{(.*?)function/gms.exec(script);
     if (initAssignmentChunk) {
@@ -424,12 +423,42 @@ function parseTJS(script) {
     script = script.replaceAll("(...)", "()");
 
 
-    const withRe = /(with \((.*)\).*?{.*?\s)(\.[A-Za-z]+)/gms;
-    alert("The withre regex that is designed to expand implicit .s in with blocks takes reallllly long and freezes everything. pls fix");
-    debugger;
+    // Unroll with block
+    const withRe = /with \((.+?)\) {(.*?)\}/gms;
     while (withRe.test(script)) {
-        console.log("EXC");
-        script = script.replace(withRe, "$1$2$3");
+        withRe.lastIndex = 0;
+        const withMatch = withRe.exec(script);
+        if (!withMatch) {
+            console.log("CURTAINS")
+            console.log(script);
+        }
+
+        let withBlock = withMatch[2].replace(/([^A-Za-z0-9])\.([A-Za-z]+)/gms, `$1${withMatch[1]}.$2`);
+
+        console.log("MATCHBOX", withMatch);
+
+        script = script.replaceAll(withMatch[0], withBlock);
+    }
+
+    // Remove type casts
+    script = script.replace(/(=\s*)int ([A-Za-z])/gm, "$1$2");
+
+    // possibly deal with incontextof
+    script = script.replace(/([A-Za-z_]+) incontextof ([A-Za-z_]+)/gm, "$2.$1");
+
+    // Setter+getter
+    script = script.replace(/property (.*?)\s*{\s*setter\(([A-Za-z_]+)\)\s*{(.*?)}\s*getter\s*{(.*?)}\s*}/gms, "set $1($2) {$3}\nget $1() {$4}");
+
+    // Just getter
+    script = script.replace(/property (.*?)\s*{\s*getter\s*{(.*?)}\s*}/gms, "get $1() {$2}");
+
+    // Dictionary to object
+    const dictRe = /%\[(.*?)\]/gms;
+    while (true) {
+        const info = dictRe.exec(script);
+        if (!info) break;
+        const objectExp = `{${info[1].replaceAll("=>", ": ")}}`;
+        script = script.replaceAll(info[0], objectExp);
     }
 
     return script;

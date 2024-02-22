@@ -372,49 +372,49 @@ function parseTJS(script) {
     script = script.replaceAll(/invalidate .*/gm, "");
 
     // pray for convention
-    let initAssignmentChunk = /class.*?{(.*?)function/gms.exec(script);
-    if (initAssignmentChunk) {
-        let assignmentString = "";
-        for (let line of initAssignmentChunk[1].split("\n")) {
-            // Zap comments
-            line = line.split("//")[0];
-            line = line.trim();
-            // Zap semicolons
-            line = line.replace(/;$/, "");
-            if (!line) continue;
+    // let initAssignmentChunk = /class.*?{(.*?)function/gms.exec(script);
+    // if (initAssignmentChunk) {
+    //     let assignmentString = "";
+    //     for (let line of initAssignmentChunk[1].split("\n")) {
+    //         // Zap comments
+    //         line = line.split("//")[0];
+    //         line = line.trim();
+    //         // Zap semicolons
+    //         line = line.replace(/;$/, "");
+    //         if (!line) continue;
 
-            const bits = line.split(" ");
-            // Zap var
-            if (bits.shift() !== "var") throw "Expected 'var'";
+    //         const bits = line.split(" ");
+    //         // Zap var
+    //         if (bits.shift() !== "var") throw "Expected 'var'";
 
-            const name = bits.shift();
-            if (name.includes("=")) throw "Uh oh equals in the name";
+    //         const name = bits.shift();
+    //         if (name.includes("=")) throw "Uh oh equals in the name";
 
-            // Uninitialized assignment
-            let result;
-            if (!bits.length) {
-                result = undefined;
-            } else {
-                if (bits.shift() !== "=") throw "Expected '='";
-                result = bits.join(" ");
-            }
+    //         // Uninitialized assignment
+    //         let result;
+    //         if (!bits.length) {
+    //             result = undefined;
+    //         } else {
+    //             if (bits.shift() !== "=") throw "Expected '='";
+    //             result = bits.join(" ");
+    //         }
 
-            assignmentString += `this.${name} = ${result};\n`;
-        }
+    //         assignmentString += `this.${name} = ${result};\n`;
+    //     }
 
-        assignmentString = assignmentString.trim();
+    //     assignmentString = assignmentString.trim();
 
-        script = script.replace(/class(.*?){.*?function/gms, `class$1{\nconstructor() {\n${assignmentString}\n}\nfunction`);
-        //initAssignmentChunk = ;
-        console.log(initAssignmentChunk);
-        //throw "Now stop"
-    }
+    //     script = script.replace(/class(.*?){.*?function/gms, `class$1{\nconstructor() {\n${assignmentString}\n}\nfunction`);
+    //     //initAssignmentChunk = ;
+    //     console.log(initAssignmentChunk);
+    //     //throw "Now stop"
+    // }
 
-    // JS methods don't like "function" keyword
-    const funcRe = /(class.*?{.*?)function\s(\S+\()/gms;
-    while (funcRe.test(script)) {
-        script = script.replace(funcRe, "$1$2");
-    }
+    // // JS methods don't like "function" keyword
+    // const funcRe = /(class.*?{.*?)function\s(\S+\()/gms;
+    // while (funcRe.test(script)) {
+    //     script = script.replace(funcRe, "$1$2");
+    // }
 
     // Integer division operator
     script = script.replace(/([A-Za-z0-9]+\s*)\\(\s*[A-Za-z0-9]+)/gm, "Math.round($1/$2)");

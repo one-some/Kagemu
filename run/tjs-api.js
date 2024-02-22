@@ -15,8 +15,22 @@ class Font {
 }
 
 class KAGPlugin {
+	constructor() { }
 
+	finalize() { }
+	onStore(f, elm) { }
+	onRestore(f, clear, elm) { }
+	onStableStateChanged(stable) { }
+	onMessageHiddenStateChanged(hidden) { }
+	onCopyLayer(toback) { }
+	onExchangeForeBack() { }
+	onSaveSystemVariables() { }
 }
+
+class KAGWindow {
+    sflags = {};
+}
+
 
 class Layer {
     constructor() {
@@ -36,6 +50,8 @@ const kag = {
     historyLayer: new MessageLayer(),
     addPlugin: TODO,
 };
+
+const kagWin = new KAGWindow();
 
 const Scripts = {
     execStorage(x) {

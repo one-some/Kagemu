@@ -1,4 +1,8 @@
-class KAGFont {
+function TODO(...args) {
+    console.warn("TODO", args);
+}
+
+class Font {
     constructor() {
         this.italic = false;
         this.bold = false;
@@ -10,22 +14,27 @@ class KAGFont {
     }
 }
 
-class KAGLayer {
+class KAGPlugin {
+
+}
+
+class Layer {
     constructor() {
-        this.font = new KAGFont();
+        this.font = new Font();
     }
 }
 
-class KAGMessageLayer {
+class MessageLayer {
     constructor() {
-        this.lineLayer = new KAGLayer();
+        this.lineLayer = new Layer();
     }
 }
 
 // Scopey
 const kag = {
-    current: new KAGMessageLayer(),
-    historyLayer: new KAGMessageLayer(),
+    current: new MessageLayer(),
+    historyLayer: new MessageLayer(),
+    addPlugin: TODO,
 };
 
 const Scripts = {

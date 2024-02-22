@@ -359,17 +359,17 @@ function parseTJS(script) {
     console.log("Parsing", script);
 
     // With else
-    script = script.replaceAll("else if", "$elif$");
-    script = script.replace(/([^ (]+) if (.*) else ([^ );]+)/gm, "$2 ? $1 : $3");
+    // script = script.replaceAll("else if", "$elif$");
+    // script = script.replace(/([^ (]+) if (.*) else ([^ );]+)/gm, "$2 ? $1 : $3");
     // No else
     // script = script.replace(/([^ ]+) if ([^;]+)/gm, "$2 ? $1 : 0");
-    script = script.replace(/(.*?) if ([^;]+)/gm, "if ($2) $1");
+    // script = script.replace(/(.*?) if ([^;]+)/gm, "if ($2) $1");
 
-    script = script.replaceAll("void", "undefined");
-    script = script.replaceAll("$elif$", "else if");
+    // script = script.replaceAll("void", "undefined");
+    // script = script.replaceAll("$elif$", "else if");
 
     // Uhhhhhhhhh
-    script = script.replaceAll(/invalidate .*/gm, "");
+    // script = script.replaceAll(/invalidate .*/gm, "");
 
     // pray for convention
     // let initAssignmentChunk = /class.*?{(.*?)function/gms.exec(script);
@@ -417,7 +417,9 @@ function parseTJS(script) {
     // }
 
     // Integer division operator
-    script = script.replace(/([A-Za-z0-9]+\s*)\\(\s*[A-Za-z0-9]+)/gm, "Math.round($1/$2)");
+    // script = script.replace(/([A-Za-z0-9]+\s*)\\(\s*[A-Za-z0-9]+)/gm, "Math.round($1/$2)");
+    
+    /*
 
     // Probably *args type stuff. Ignore 4 now.
     script = script.replaceAll("(...)", "()");
@@ -461,9 +463,11 @@ function parseTJS(script) {
         script = script.replaceAll(info[0], objectExp);
     }
 
+    */
     return script;
 }
 
+var SCRIPTDUMP = "";
 
 const exp = (function (script) {
     if (!script) return;
@@ -480,7 +484,11 @@ const exp = (function (script) {
     try {
         out = sandboxFrame.contentWindow.eval(script);
     } catch (exception) {
-        console.error(`TJS Error: ${exception} Script:\n${script}`);
+
+        SCRIPTDUMP = script;
+        console.log(script);
+        //if (script.length > 500) script = "<long - snip>";
+        console.error(`TJS Error: ${exception}`);
         console.error(executionState.pointer.path);
         if (!IGNORE_TJS_ERRORS) throw "TJS Err!";
         return undefined;

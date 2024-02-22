@@ -10,5 +10,5 @@ for name in os.listdir("scripts"):
 
 js_string = f"const BigPacked = {json.dumps(data, indent=4)};"
 
-with open("packed.js", "w") as file:
+with open("../run/packed.js", "w") as file:
     file.write(js_string)

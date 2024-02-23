@@ -1,11 +1,12 @@
 // https://kirikirikag.sourceforge.net/contents/index.html
 const IGNORE_BADPATH = false;
-const IGNORE_TJS_ERRORS = false;
+const IGNORE_TJS_ERRORS = true;
 
 const cachedStatements = {};
 const callStack = [];
 const labelCache = {};
 const macroCache = {};
+const patchedMacros = {};
 const blockNodes = {
     iscript: {open: "iscript", close: "endscript", textOnly: true},
     macro: {open: "macro", close: "endmacro"},
@@ -356,7 +357,7 @@ function jumpToLabel(label, storage=null, kickstart=false) {
 
 function parseTJS(script) {
     // yeah this is sketch but i dont want to write a real js transpiler!!!
-    console.log("Parsing", script);
+    // console.log("Parsing", script);
 
     // With else
     // script = script.replaceAll("else if", "$elif$");
@@ -474,7 +475,7 @@ const exp = (function (script) {
 
     // Graft
     for (const [k, v] of Object.entries(executionState.scope)) {
-        console.log("Grafting", k, "with val", v);
+        // console.log("Grafting", k, "with val", v);
         sandboxFrame.contentWindow[k] = v;
     }
 
@@ -563,6 +564,10 @@ function nodeToReal(node) {
     return out;
 }
 
+function defineMacro(name, callback) {
+    patchedMacros[name] = callback;
+}
+
 function executeIScriptNode(node) {
     let script = nodeToReal(node).trim();
     let lines = script.split("\n");
@@ -583,6 +588,11 @@ function executeIScriptNode(node) {
 
 function executeTag(tag, macroDepth=0) {
     if (!tag.func) throw "Bad tag func";
+
+    if (tag.func in patchedMacros) {
+        patchedMacros[tag.func](tag.args);
+        return;
+    }
 
     if (tag.func in macroCache) {
         callMacro(tag.func, macroDepth, tag.args);
@@ -753,4 +763,6 @@ function runUntilStopped() {
 }
 
 // Run! For your life!
-executionState.pointer.jumpToFile("first.ks");
+window.addEventListener("load", function() {
+    executionState.pointer.jumpToFile("first.ks");
+});

@@ -13,8 +13,8 @@ defineMacro("char_reg", function(args) {
     console.log(args)
     defineMacro(args.name, function(charArgs) {
         const storageBits = charArgs.storage.split(" ");
+        if (characterImages[args.name]) characterImages[args.name].remove();
         let img = showImage(`${args.name}_${storageBits[0]}`);
-        if (characterImages[args.name]) img.remove();
         characterImages[args.name] = img;
     });
 });

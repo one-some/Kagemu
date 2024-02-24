@@ -71,7 +71,7 @@ function uiMakeButton(args) {
     b.addEventListener("click", function() {
         // TODO: LOTS
         if (args.clickse) uiPlaySfx(args.clickse);
-        jumpToLabel(args.target.slice(1), executionState.path, true);
+        jumpToLabel(args.target.slice(1), args.storage || executionState.path, true);
     });
 
     // TODO: Bufs

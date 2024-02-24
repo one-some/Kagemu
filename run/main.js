@@ -2,6 +2,8 @@
 const IGNORE_BADPATH = false;
 const IGNORE_TJS_ERRORS = true;
 
+BigPacked["Macro_CharLayers.ks"] = "[return]";
+
 const cachedStatements = {};
 const callStack = [];
 const labelCache = {};
@@ -10,7 +12,7 @@ const patchedMacros = {};
 const blockNodes = {
     iscript: {open: "iscript", close: "endscript", textOnly: true},
     macro: {open: "macro", close: "endmacro"},
-    "if": {open: "if", close: "endif"},
+    // "if": {open: "if", close: "endif"},
 };
 const macroArgs = {};
 
@@ -37,6 +39,7 @@ class Pointer {
     jumpToFile(path) {
         cacheStatements(path);
         if (!cachedStatements[path]) throw `Unable to fetch statements for ${path}`;
+
         this.path = path;
         this.jumpTo(cachedStatements[path]);
 
@@ -149,7 +152,13 @@ function parseScenario(src, path) {
     function commitNode(node) {
         node.real = realBuffer;
         realBuffer = "";
-        currentNode.children.push(node);
+
+        if (currentNode.func === "if") {
+            // Put node into one of if statement's various clauses
+            currentNode.branches.at(-1).children.push(node);
+        } else {
+            currentNode.children.push(node);
+        }
     }
 
     function foresee(what, i) {
@@ -164,11 +173,15 @@ function parseScenario(src, path) {
         const statement = {type: "label", name: bits[0]};
         if (bits.length === 2) statement["displayName"] = bits[1];
 
+        labelBuffer = null;
+
+        // This will hurt later!
+        if (currentNode.func === "if") return;
+
         labelCache[path][bits[0]] = {
             pointer: new Pointer(currentNode, currentNode.children.length, path)
         };
         commitNode(statement);
-        labelBuffer = null;
     }
 
     function commitComment() {
@@ -199,6 +212,25 @@ function parseScenario(src, path) {
         const tag = {type: "tag", ...parseTag(tagBuffer)};
         tagBuffer = null;
         tagBufferOpener = null;
+
+        if (tag.func === "if") {
+            tag.parent = currentNode;
+            tag.branches = [
+                {condition: tag.exp, children: []}
+            ];
+            commitNode(tag);
+            currentNode = tag;
+            return;
+        } else if (tag.func === "else") {
+            // Branch off
+            // TODO: elseif/elif
+            currentNode.branches.push({condition: "else", children: []});
+            return;
+        } else if (tag.func === "endif") {
+            // Close off the if
+            currentNode = currentNode.parent;
+            return;
+        }
 
         // console.log("Commit:", tag);
 
@@ -599,9 +631,17 @@ function executeTag(tag, macroDepth=0) {
         return;
     }
 
-    console.info("EXECUTING", tag);
+    // console.info("EXECUTING", tag);
 
     switch (tag.func) {
+        case "if":
+            for (const branch of tag.branches) {
+                if (!(branch.condition === "else" || exp(branch.condition))) continue;
+                for (const child of branch.children) {
+                    evalStatement(child);
+                }
+            }
+            break;
         case "macro":
             if (!tag.args.name) throw "No name for macro :(";
             macroCache[tag.args.name] = tag;
@@ -628,6 +668,7 @@ function executeTag(tag, macroDepth=0) {
             throw "BYE BYE";
             break;
         case "button":
+            if (tag.args.storage) cacheStatements(tag.args.storage);
             uiMakeButton(tag.args);
             break;
         case "image":
@@ -736,6 +777,20 @@ function stopExecution() {
     console.log("[stopexecution] Okay boss...");
 }
 
+function evalStatement(statement) {
+    switch (statement.type) {
+        case "tag":
+            executeTag(statement);
+            break;
+        case "text":
+            uiAddText(statement.text.replaceAll("\n", ""));
+            break;
+        case "label":
+            uiShowLabel(statement.name);
+            break;
+    }
+}
+
 function runUntilStopped() {
     console.info("I'm on the run! Unstopping...");
     executionState.stopped = false;
@@ -746,17 +801,7 @@ function runUntilStopped() {
         const statement = executionState.pointer.statementAt();
         if (!statement) break;
 
-        switch (statement.type) {
-            case "tag":
-                executeTag(statement);
-                break;
-            case "text":
-                uiAddText(statement.text.replaceAll("\n", ""));
-                break;
-            case "label":
-                uiShowLabel(statement.name);
-                break;
-        }
+        evalStatement(statement);
     }
 
     console.log("Ending! Callstack length:", callStack.length, "Pointer", executionState.pointer.toString());

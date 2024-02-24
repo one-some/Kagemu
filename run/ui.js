@@ -284,6 +284,11 @@ function uiIncrementUnknownTags() {
     document.querySelector("#unk-tags").innerText = unknownTagCount;
 }
 
+function uiShowLabel(name) {
+    document.querySelector("#current-label").innerText = name;
+}
+
+
 function advanceIfStopped() {
     if (!waitingForUIClick) return;
     waitingForUIClick = false;

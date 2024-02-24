@@ -742,16 +742,20 @@ function runUntilStopped() {
 
     while (!executionState.stopped) {
         executionState.pointer.advance();
-        // if (executionState.pointer >= cachedStatements[executionState.path].length) break;
 
         const statement = executionState.pointer.statementAt();
         if (!statement) break;
 
-        // cachedStatements[executionState.path][executionState.pointer];
-        if (statement.type === "tag") {
-            executeTag(statement);
-        } else if (statement.type === "text") {
-            uiAddText(statement.text.replaceAll("\n", ""));
+        switch (statement.type) {
+            case "tag":
+                executeTag(statement);
+                break;
+            case "text":
+                uiAddText(statement.text.replaceAll("\n", ""));
+                break;
+            case "label":
+                uiShowLabel(statement.name);
+                break;
         }
     }
 

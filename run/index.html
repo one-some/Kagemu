@@ -8,9 +8,23 @@
             src: url("font/DroidSerif-Regular.ttf") format("truetype");
         }
 
+        a, a:visited, a:hover, a:active {
+            color: lightblue;
+        }
+
         html, body {
             height: 100%;
             margin: 0px;
+            font-family: monospace;
+        }
+
+        body {
+            color: #ffffcc;
+            background-color: #181818;
+
+            display: flex;
+            justify-content: safe center;
+            align-items: safe center;
         }
 
         button {
@@ -42,8 +56,67 @@
         .hidden {
             display: none !important;
         }
+
+        #middlezone {
+            display: inline-block;
+            border: 1px solid #ffffcc;
+        }
+
+        #morgana-player {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            border-color: #ffffcc;
+            border-top: 1px solid;
+            border-bottom: 1px solid;
+        }
+
+        #morgana-title {
+            color: white;
+            font-style: italic;
+        }
+
+        #top { margin: 6px; }
+        #bottom a {
+            display: block;
+            margin-left: 12px;
+        }
+
+        #bottom { display: flex; }
+        #bottom > * {
+            flex: 1 0 0;
+            padding: 6px;
+        }
+
+        #b-left { border-right: 1px solid #ffffcc; }
+
+        #unk-tags { color: #ff7a7a; }
     </style>
     <body>
+        <div id="middlezone">
+            <div id="top">
+                <span>Kagemu</span>
+                <span>|</span>
+                <span><span id="unk-tags">0</span> unknown tags</span>
+                <span>|</span>
+                <span id="morgana-title">House IN FATAMORAAAGAANAAA</span>
+            </div>
+            <div id="morgana-player"></div>
+            <div id="bottom">
+                <div id="b-left">
+                    <span>Quick Links:</span>
+                    <a href="https://kirikirikag.sourceforge.net/contents/index.html">KAG Documentation</a>
+                    <a href="https://github.com/krkrz/krkrz">KiriKiriZ GitHub</a>
+                    <a href="https://translate.google.com/?sl=ja&tl=en&op=websites">Google Translate JP -> EN (Websites)</a>
+                    <a href="https://www.deepl.com/translator">DeepL</a>
+                </div>
+                <div id="b-right">
+                    <span>Controls:<span><br>
+                    <span>Spacebar/Click - Continue<span><br>
+                    <span>Shift - Superfast Skip<span><br>
+                </div>
+            </div>
+        </div>
         <audio id="bgm" loop="true"></audio>
         <audio id="sfx"></audio>
 

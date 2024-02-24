@@ -1,6 +1,7 @@
 const mute = false;
 const cursor = {x: 0, y: 0};
 const layerSize = {x: 800, y: 600};
+const rootCont = document.querySelector("#morgana-player");
 
 const messageLayers = {
     message: null,
@@ -12,6 +13,7 @@ const messageLayers = {
 
 let activeMessageLayer = "message0";
 let activeLayer = "0";
+let unknownTagCount = 0;
 
 for (const k in messageLayers) {
     const div = document.createElement("div");
@@ -23,7 +25,7 @@ for (const k in messageLayers) {
     div.textLines = [];
 
     messageLayers[k] = div;
-    document.body.appendChild(div);
+    rootCont.appendChild(div);
 }
 
 const bgmEl = document.getElementById("bgm");
@@ -37,6 +39,7 @@ let waitingForUIClick = false;
 
 function uiSetTitle(title) {
     document.title = `[Kagemu] ${title}`;
+    document.querySelector("#morgana-title").innerText = title;
 }
 
 function uiPlaySfx(name) {
@@ -225,7 +228,7 @@ function ensureLayer(name) {
     layer.classList.add("layer");
     layer.img = null;
     normalLayers[name] = layer;
-    document.body.appendChild(layer);
+    rootCont.appendChild(layer);
     return layer;
 }
 
@@ -270,10 +273,15 @@ function uiImage(args) {
             break;
     }
 
-    document.body.appendChild(image);
+    rootCont.appendChild(image);
 
     console.log(args.storage);
     console.warn(args);
+}
+
+function uiIncrementUnknownTags() {
+    unknownTagCount += 1;
+    document.querySelector("#unk-tags").innerText = unknownTagCount;
 }
 
 function advanceIfStopped() {
@@ -282,7 +290,7 @@ function advanceIfStopped() {
     runUntilStopped();
 }
 
-document.body.addEventListener("click", advanceIfStopped, true);
+rootCont.addEventListener("click", advanceIfStopped, true);
 
 let skipHeld = false;
 
@@ -294,7 +302,10 @@ window.addEventListener("keydown", function(event) {
         case " ":
             advanceIfStopped();
             break;
+        default:
+            return;
     }
+    event.preventDefault();
 });
 
 window.addEventListener("keyup", function(event) {

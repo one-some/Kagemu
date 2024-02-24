@@ -713,6 +713,7 @@ function executeTag(tag, macroDepth=0) {
             }
             break;
         default:
+            uiIncrementUnknownTags();
             console.error(`Missing "${tag.func}" with args`, tag.args);
             break;
     }

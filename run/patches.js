@@ -7,7 +7,7 @@ function showImage(name) {
     img.src = `image/${name}.png`;
     img.className = "character";
     img.style.position = "absolute";
-    document.body.appendChild(img);
+    rootCont.appendChild(img);
     img.onload = function() { redoCharLayout(); }
     return img;
 }

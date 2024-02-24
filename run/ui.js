@@ -1,5 +1,6 @@
 const mute = false;
 const cursor = {x: 0, y: 0};
+const layerSize = {x: 800, y: 600};
 
 const messageLayers = {
     message: null,
@@ -149,12 +150,13 @@ function uiCurrentLayer(args) {
     if (args.layer !== undefined) activeMessageLayer = args.layer;
 }
 
-function uiAddText(text) {
+function uiAddText(text, centered=false) {
     if (!text) return;
     // console.info(`ADD TEXT: "${text}"`);
 
     const layer = messageLayers[activeMessageLayer];
     for (const line of layer.textLines) {
+        if (centered) break;
         if (!(line.pos.x === cursor.x && line.pos.y === cursor.y)) continue;
         // FIXME: Slow...?
         line.p.dataText += text;
@@ -165,7 +167,12 @@ function uiAddText(text) {
     const p = document.createElement("p");
     p.dataText = text;
     p.innerText = text;
-    p.style.left = `${cursor.x}px`;
+    if (centered) {
+        p.style.width = "100%";
+        p.style.textAlign = "center";
+    } else {
+        p.style.left = `${cursor.x}px`;
+    }
     p.style.bottom = `${cursor.y}px`;
     const line = {pos: {x: cursor.x, y: cursor.y}, p: p};
     layer.textLines.push(line);

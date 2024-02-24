@@ -1,20 +1,65 @@
 const characterImages = {};
+const characterConfig = {};
 
 function showImage(name) {
     console.log(name)
     const img = new Image();
     img.src = `image/${name}.png`;
-    img.style.zIndex = 99;
+    img.className = "character";
+    img.style.position = "absolute";
     document.body.appendChild(img);
+    img.onload = function() { redoCharLayout(); }
     return img;
+}
+
+function summonCharacter(charArgs, callArgs) {
+    const storageBits = callArgs.storage.split(" ");
+    if (characterImages[charArgs.name]) characterImages[charArgs.name].remove();
+    let img = showImage(`${charArgs.name}_${storageBits[0]}`);
+    characterImages[charArgs.name] = img;
+
+    if (callArgs.initpos) {
+        const p = callArgs.initpos.split(",").map(x => parseInt(x)); 
+        //if (callArgs.posx === "right") p[0] = layerSize.x - p[0];
+        //if (callArgs.posx === "right") p[0] *= -1;
+        characterConfig[charArgs.name].initpos = p;
+    }
+
+    if (callArgs.posx) characterConfig[charArgs.name].posx = callArgs.posx;
+
+    redoCharLayout();
+}
+
+function redoCharLayout() {
+    const count = Object.keys(characterImages).length;
+    let i = 0;
+    for (const [name, image] of Object.entries(characterImages)) {
+        const pxX = (layerSize.x / 4 / count) * (i + 1) - (image.naturalWidth / 2) + (layerSize.x / 4);
+        i++;
+        const charConf = characterConfig[name];
+        const pos = Array.from(charConf.initpos || [0, 0]);
+        pos[0] += pxX;
+
+        image.style.left = `${pos[0]}px`;
+        image.style.top = `${pos[1]}px`;
+    }
 }
 
 defineMacro("char_reg", function(args) {
     console.log(args)
-    defineMacro(args.name, function(charArgs) {
-        const storageBits = charArgs.storage.split(" ");
-        if (characterImages[args.name]) characterImages[args.name].remove();
-        let img = showImage(`${args.name}_${storageBits[0]}`);
-        characterImages[args.name] = img;
+    characterConfig[args.name] = {};
+    defineMacro(args.name, function(x) {
+        summonCharacter(args, x);
     });
+});
+
+defineMacro("char_erase", function(args) {
+    for (const k in characterImages) {
+        characterImages[k].remove();
+        delete characterImages[k];
+    }
+});
+
+defineMacro("c", function(args) {
+    uiAddText(args.text, centered=true);
 });

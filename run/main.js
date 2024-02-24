@@ -599,7 +599,7 @@ function executeTag(tag, macroDepth=0) {
         return;
     }
 
-    // console.info("EXECUTING", tag);
+    console.info("EXECUTING", tag);
 
     switch (tag.func) {
         case "macro":
@@ -615,6 +615,9 @@ function executeTag(tag, macroDepth=0) {
         case "emb":
             const out = exp(tag.args.exp);
             uiAddText(out);
+            break;
+        case "c":
+            uiAddText("CENTER ME");
             break;
         case "s":
             executionState.stopped = true;

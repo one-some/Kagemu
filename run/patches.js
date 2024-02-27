@@ -1,21 +1,36 @@
 const characterImages = {};
 const characterConfig = {};
 
-function showImage(name) {
-    console.log(name)
-    const img = new Image();
-    img.src = `image/${name}.png`;
-    img.className = "character";
-    img.style.position = "absolute";
-    rootCont.appendChild(img);
-    img.onload = function() { redoCharLayout(); }
-    return img;
+function showDoll(name, storageBits) {
+    const div = document.createElement("div");
+    div.className = "character";
+    div.style.position = "absolute";
+    rootCont.appendChild(div);
+
+    const parts = [`${name}_${storageBits[0]}`]; // Torso
+
+    if (storageBits[1] !== "-") {
+        // Face
+        parts.push(`${name}_${storageBits[1]}`);
+    }
+
+    for (const partFileName of parts) {
+        const img = new Image();
+        img.src = `image/${partFileName}.png`;
+        img.style.position = "absolute";
+        img.onload = function() { redoCharLayout(); }
+        div.appendChild(img);
+    }
+
+    return div;
 }
 
 function summonCharacter(charArgs, callArgs) {
     const storageBits = callArgs.storage.split(" ");
     if (characterImages[charArgs.name]) characterImages[charArgs.name].remove();
-    let img = showImage(`${charArgs.name}_${storageBits[0]}`);
+
+    let img = showDoll(charArgs.name, storageBits);
+
     characterImages[charArgs.name] = img;
 
     if (callArgs.initpos) {

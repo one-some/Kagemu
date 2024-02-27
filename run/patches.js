@@ -77,3 +77,33 @@ defineMacro("char_erase", function(args) {
 defineMacro("c", function(args) {
     uiAddText(args.text, "center");
 });
+
+// Achievements
+const Achievements = {
+    "FATAMORGANA_CH1": {name: "Rose Manor", desc: "Complete Chapter I."},
+    "FATAMORGANA_CH2": {name: "Weeping Manor", desc: "Complete Chapter II."},
+    "FATAMORGANA_MEMENTO": {name: "Memento", desc: "Examine the mirror."},
+    "FATAMORGANA_CH3": {name: "Pig Iron Manor", desc: "Complete Chapter III."},
+    "FATAMORGANA_CH4": {name: "Misty Manor", desc: "Complete Chapter IV."},
+    "FATAMORGANA_RECLAIM": {name: "Reclaim Yourself", desc: null},
+    "FATAMORGANA_CH5": {name: "The Moonlight's Spell", desc: null},
+    "FATAMORGANA_CH6": {name: "The Maid's Tale", desc: null},
+    "FATAMORGANA_CH7": {name: "Demon Child", desc: null},
+    "FATAMORGANA_CH8": {name: "Deliverance", desc: null},
+    "FATAMORGANA_CH9": {name: "Fata Morgana", desc: null},
+    "FATAMORGANA_BACKSTAGE": {name: "Backstage", desc: "Take a peek behind the scenes."},
+    "FATAMORGANA_PROLOGUE": {name: "Prologue", desc: null},
+    "FATAMORGANA_DEPARTED": {name: "The Departed", desc: null},
+    "FATAMORGANA_DEADEND": {name: "Incompetent Hero", desc: null},
+    "FATAMORGANA_LONELY": {name: "All Alone", desc: "Call for the Maid 10 times."}}
+
+};
+
+function achieveAchievement(name) {
+    const ach = Achievements[name];
+    alert(`Achievement get! ${ach.name}`);
+}
+
+defineMacro("set_achievement", function(args) {
+    achieveAchievement(args.name);
+});

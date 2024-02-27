@@ -47,7 +47,6 @@ class Pointer {
     }
 
     advance() {
-        //console.log("advancing", this.node);
         if (this.index < this.node.children.length) {
             this.index++;
             return;
@@ -88,7 +87,6 @@ const executionState = Object.seal({
 
 function doReturn() {
     let stackPointer = callStack.pop();
-    // console.warn("GOUP", stackPointer);
     executionState.pointer = stackPointer;
     executionState.pointer.advance();
 }
@@ -232,8 +230,6 @@ function parseScenario(src, path) {
             return;
         }
 
-        // console.log("Commit:", tag);
-
         let openCloseInfo;
         for (const [name, nodeInfo] of Object.entries(blockNodes)) {
             if (tag.func === nodeInfo.close) {
@@ -271,10 +267,8 @@ function parseScenario(src, path) {
             // We are closing!
             // TODO: TEXTONLY
             currentNode = currentNode.parent;
-            // console.log("CLOSE");
             return;
         } else if (openCloseInfo.state === "open") {
-            // console.log("OPEN");
             const child = {...tag, name: openCloseInfo.name, parent: currentNode, children: []};
             commitNode(child);
             currentNode = child;
@@ -362,8 +356,6 @@ function parseScenario(src, path) {
         realBuffer += c;
     }
 
-    // console.warn(rootNode);
-
     commitTag();
     commitLabel();
     commitText();
@@ -373,13 +365,11 @@ function parseScenario(src, path) {
 
 function jumpToLabel(label, storage=null, kickstart=false) {
     if (!storage) storage = executionState.pointer.path;
-    // console.log(executionState);
     if (!storage) throw "NO STORAGE";
     cacheStatements(storage);
 
     if (!labelCache[storage][label]) {
-        console.warn("[jumptolabel] FAIL!!", label, storage);
-        throw "MISSING "+label;
+        throw "[jumptolabel] FAIL!! ${label} ${storage}";
     }
 
     executionState.pointer = labelCache[storage][label].pointer;
@@ -389,7 +379,6 @@ function jumpToLabel(label, storage=null, kickstart=false) {
 
 function parseTJS(script) {
     // yeah this is sketch but i dont want to write a real js transpiler!!!
-    // console.log("Parsing", script);
 
     // With else
     // script = script.replaceAll("else if", "$elif$");
@@ -507,7 +496,6 @@ const exp = (function (script) {
 
     // Graft
     for (const [k, v] of Object.entries(executionState.scope)) {
-        // console.log("Grafting", k, "with val", v);
         sandboxFrame.contentWindow[k] = v;
     }
 
@@ -519,10 +507,9 @@ const exp = (function (script) {
     } catch (exception) {
 
         SCRIPTDUMP = script;
-        console.log(script);
         //if (script.length > 500) script = "<long - snip>";
-        console.error(`TJS Error: ${exception}`);
-        console.error(executionState.pointer.path);
+        console.warn(`TJS Error: ${exception}`);
+        console.warn(executionState.pointer.path);
         if (!IGNORE_TJS_ERRORS) throw "TJS Err!";
         return undefined;
     }
@@ -589,7 +576,6 @@ function nodeToReal(node) {
     let out = node.real;
 
     for (const child of node.children || []) {
-        console.log(child);
         out += nodeToReal(child);
     }
 
@@ -612,9 +598,6 @@ function executeIScriptNode(node) {
 
     script = lines.join("\n");
 
-
-    console.log("Run!");
-    console.log(script);
     exp(script);
 }
 
@@ -631,7 +614,6 @@ function executeTag(tag, macroDepth=0) {
         return;
     }
 
-    // console.info("EXECUTING", tag);
 
     switch (tag.func) {
         case "if":
@@ -702,6 +684,9 @@ function executeTag(tag, macroDepth=0) {
         case "locate":
             uiLocate(tag.args);
             break;
+        case "style":
+            uiStyle(tag.args);
+            break;
         case "font":
             uiFont(tag.args);
             break;
@@ -724,7 +709,7 @@ function executeTag(tag, macroDepth=0) {
             uiSetTitle(tag.args.name);
             break;
         case "loadplugin":
-            console.warn("[note] loadplugin's a no-go. hope that's okay!");
+            // No dlls for us
             break;
         case "return":
             if (tag.args.cond) {
@@ -740,7 +725,6 @@ function executeTag(tag, macroDepth=0) {
 
             cacheStatements(tag.args.storage);
 
-            // console.warn(tag);
             // alert(`goto ${tag.func} ${tag.args.storage} from ${executionState.path}`);
 
             if (tag.args.target) {
@@ -749,7 +733,7 @@ function executeTag(tag, macroDepth=0) {
             } else if (tag.args.storage) {
                 executionState.pointer.jumpToFile(tag.args.storage);
             } else {
-                console.log(tag);
+                console.error(tag);
                 throw "Freak call";
             }
             break;
@@ -774,7 +758,6 @@ function cacheStatements(path) {
 
 function stopExecution() {
     executionState.stopped = true;
-    console.log("[stopexecution] Okay boss...");
 }
 
 function evalStatement(statement) {
@@ -792,7 +775,6 @@ function evalStatement(statement) {
 }
 
 function runUntilStopped() {
-    console.info("I'm on the run! Unstopping...");
     executionState.stopped = false;
 
     while (!executionState.stopped) {
@@ -804,14 +786,14 @@ function runUntilStopped() {
         evalStatement(statement);
     }
 
-    console.log("Ending! Callstack length:", callStack.length, "Pointer", executionState.pointer.toString());
+    // console.log("Ending! Callstack length:", callStack.length, "Pointer", executionState.pointer.toString());
 
     if (callStack.length) {
-        console.log("Returning...");
+        // console.log("Returning...");
         doReturn();
         runUntilStopped();
     } else {
-        console.info("End of RUS");
+        // console.info("End of RUS");
     }
 }
 

@@ -14,6 +14,7 @@ const messageLayers = {
 let activeMessageLayer = "message0";
 let activeLayer = "0";
 let unknownTagCount = 0;
+let align = "default";
 
 for (const k in messageLayers) {
     const div = document.createElement("div");
@@ -40,6 +41,10 @@ let waitingForUIClick = false;
 function uiSetTitle(title) {
     document.title = `[Kagemu] ${title}`;
     document.querySelector("#morgana-title").innerText = title;
+}
+
+function uiStyle(args) {
+    if (args.align) align = args.align;
 }
 
 function uiPlaySfx(name) {
@@ -111,6 +116,9 @@ function uiFont(args) {
 function uiLocate(args) {
     if ("x" in args) cursor.x = args.x;
     if ("y" in args) cursor.y = args.y;
+
+    // HACK?
+    align = "left";
 }
 
 function uiPosition(args) {
@@ -121,13 +129,17 @@ function uiPosition(args) {
     if (args.left !== undefined) ourGuy.style.left = `${args.left}px`;
     if (args.top !== undefined) ourGuy.style.top = `${args.top}px`;
 
+    if (args.marginl !== undefined) {
+        ourGuy.style.paddingLeft = `${args.marginl}px`;
+        if (args.width !== undefined) args.width -= args.marginl * 2;
+    }
+    if (args.marginr !== undefined) ourGuy.style.paddingRight = `${args.marginr}px`;
+    if (args.margint !== undefined) ourGuy.style.paddingTop = `${args.margint}px`;
+    if (args.marginb !== undefined) ourGuy.style.paddingBottom = `${args.marginb}px`;
+
     if (args.width !== undefined) ourGuy.style.width = `${args.width}px`;
     if (args.height !== undefined) ourGuy.style.height = `${args.height}px`;
 
-    if (args.marginl !== undefined) ourGuy.style.marginLeft = `${args.marginLeft}px`;
-    if (args.marginr !== undefined) ourGuy.style.marginRight = `${args.marginRight}px`;
-    if (args.margint !== undefined) ourGuy.style.marginTop = `${args.marginTop}px`;
-    if (args.marginb !== undefined) ourGuy.style.marginBottom = `${args.marginBottom}px`;
 
     if (args.visible !== undefined) ourGuy.classList.toggle("hidden", !args.visible);
     if (args.opacity !== undefined) ourGuy.style.opacity = (parseInt(args.opacity) / 255).toString();
@@ -153,13 +165,15 @@ function uiCurrentLayer(args) {
     if (args.layer !== undefined) activeMessageLayer = args.layer;
 }
 
-function uiAddText(text, centered=false) {
+function uiAddText(text, textAlign=null) {
     if (!text) return;
+
+    textAlign = textAlign || align;
     // console.info(`ADD TEXT: "${text}"`);
 
     const layer = messageLayers[activeMessageLayer];
     for (const line of layer.textLines) {
-        if (centered) break;
+        if (textAlign === "center") break;
         if (!(line.pos.x === cursor.x && line.pos.y === cursor.y)) continue;
         // FIXME: Slow...?
         line.p.dataText += text;
@@ -170,13 +184,13 @@ function uiAddText(text, centered=false) {
     const p = document.createElement("p");
     p.dataText = text;
     p.innerText = text;
-    if (centered) {
+    if (textAlign === "center") {
         p.style.width = "100%";
         p.style.textAlign = "center";
     } else {
         p.style.left = `${cursor.x}px`;
     }
-    p.style.bottom = `${cursor.y}px`;
+    p.style.top = `${cursor.y}px`;
     const line = {pos: {x: cursor.x, y: cursor.y}, p: p};
     layer.textLines.push(line);
     layer.appendChild(p);
@@ -274,9 +288,6 @@ function uiImage(args) {
     }
 
     rootCont.appendChild(image);
-
-    console.log(args.storage);
-    console.warn(args);
 }
 
 function uiIncrementUnknownTags() {

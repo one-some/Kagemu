@@ -61,7 +61,6 @@ function redoCharLayout() {
 }
 
 defineMacro("char_reg", function(args) {
-    console.log(args)
     characterConfig[args.name] = {};
     defineMacro(args.name, function(x) {
         summonCharacter(args, x);
@@ -76,5 +75,5 @@ defineMacro("char_erase", function(args) {
 });
 
 defineMacro("c", function(args) {
-    uiAddText(args.text, centered=true);
+    uiAddText(args.text, "center");
 });

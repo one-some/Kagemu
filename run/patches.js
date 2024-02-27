@@ -95,8 +95,7 @@ const Achievements = {
     "FATAMORGANA_PROLOGUE": {name: "Prologue", desc: null},
     "FATAMORGANA_DEPARTED": {name: "The Departed", desc: null},
     "FATAMORGANA_DEADEND": {name: "Incompetent Hero", desc: null},
-    "FATAMORGANA_LONELY": {name: "All Alone", desc: "Call for the Maid 10 times."}}
-
+    "FATAMORGANA_LONELY": {name: "All Alone", desc: "Call for the Maid 10 times."}
 };
 
 function achieveAchievement(name) {
